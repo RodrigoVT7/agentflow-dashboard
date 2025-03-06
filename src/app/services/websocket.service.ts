@@ -24,6 +24,10 @@ export class WebsocketService {
   private messageQueue: {type: string, payload: any}[] = [];
   private isConnected = new BehaviorSubject<boolean>(false);
   public isConnected$ = this.isConnected.asObservable();
+  
+  // For tracking and debouncing recently sent messages
+  private lastSentMessages: Record<string, number> = {};
+  private readonly MESSAGE_DEBOUNCE_MS = 1000; // 1 second debounce for messages
 
   constructor(private authService: AuthService) {
     // Auto-reconnect when authentication state changes
@@ -139,6 +143,21 @@ export class WebsocketService {
   }
 
   public send(type: string, payload: any): void {
+    // Special handling for message:send to prevent duplicate conversations
+    if (type === 'message:send') {
+      if (!payload || !payload.conversationId || !payload.message) {
+        console.error('Invalid message payload:', payload);
+        return;
+      }
+      
+      // Check if we should prevent a duplicate message
+      const shouldSendMessage = this.validateMessageSend(payload.conversationId);
+      if (!shouldSendMessage) {
+        console.warn('Preventing potential duplicate message send:', payload.conversationId);
+        return;
+      }
+    }
+
     if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
       console.log('WebSocket not connected, queueing message:', type);
       this.messageQueue.push({ type, payload });
@@ -153,6 +172,36 @@ export class WebsocketService {
     };
 
     this.socket.send(JSON.stringify(message));
+  }
+  
+  // Validate if we should send a message (debounce to prevent duplicates)
+  private validateMessageSend(conversationId: string): boolean {
+    // This helps prevent duplicate conversation creation during message sending
+    // By checking if we just sent a message to this conversation
+    
+    const now = Date.now();
+    const lastSent = this.lastSentMessages[conversationId] || 0;
+    
+    // If we sent a message in the last second, prevent potential duplicates
+    if (now - lastSent < this.MESSAGE_DEBOUNCE_MS) {
+      return false;
+    }
+    
+    // Store timestamp of this message
+    this.lastSentMessages[conversationId] = now;
+    
+    // Clean up old entries every 100 messages to prevent memory leaks
+    if (Object.keys(this.lastSentMessages).length > 100) {
+      const cutoff = now - (this.MESSAGE_DEBOUNCE_MS * 10); // 10x the debounce time
+      
+      Object.keys(this.lastSentMessages).forEach(id => {
+        if (this.lastSentMessages[id] < cutoff) {
+          delete this.lastSentMessages[id];
+        }
+      });
+    }
+    
+    return true;
   }
   
   private processQueue(): void {

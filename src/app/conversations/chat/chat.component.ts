@@ -1,3 +1,4 @@
+// src/app/conversations/chat/chat.component.ts
 import { Component, Input, OnChanges, OnInit, SimpleChanges, ViewChild, ElementRef, AfterViewChecked } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { QueueItem } from '../../models/conversation.model';
@@ -40,7 +41,10 @@ export class ChatComponent implements OnInit, OnChanges, AfterViewChecked {
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['conversation'] && this.conversation) {
-      this.messages = [...this.conversation.messages];
+      // Filter out invalid messages before assigning
+      this.messages = this.conversation.messages
+        ? this.conversation.messages.filter(m => !!m && !!m.text && !!m.from)
+        : [];
       this.scrollToBottom();
     }
   }
@@ -69,13 +73,15 @@ export class ChatComponent implements OnInit, OnChanges, AfterViewChecked {
   private loadMessages(): void {
     // First, set any messages we already have from the queue
     if (this.conversation.messages) {
-      this.messages = [...this.conversation.messages];
+      // Filter out invalid messages
+      this.messages = this.conversation.messages.filter(m => !!m && !!m.text && !!m.from);
     }
     
     // Then load any additional messages from the API
     this.conversationService.getMessages(this.conversation.conversationId)
       .subscribe(messages => {
-        this.messages = messages;
+        // Filter out invalid messages
+        this.messages = messages.filter(m => !!m && !!m.text && !!m.from);
         setTimeout(() => this.scrollToBottom(), 100);
       });
   }
@@ -107,6 +113,9 @@ export class ChatComponent implements OnInit, OnChanges, AfterViewChecked {
     this.messages = [...this.messages, optimisticMessage];
     this.scrollToBottom();
     
+    // Reset the form before sending to prevent duplicate messages
+    this.messageForm.reset();
+    
     // Send message via WebSocket for immediate response
     this.conversationService.sendMessageWs(
       this.conversation.conversationId, 
@@ -121,7 +130,6 @@ export class ChatComponent implements OnInit, OnChanges, AfterViewChecked {
       next: (response) => {
         // Replace the temporary message with the confirmed one from server if needed
         // This step might not be necessary if the WebSocket handles it
-        this.messageForm.reset();
         this.sending = false;
       },
       error: (error) => {
@@ -161,7 +169,7 @@ export class ChatComponent implements OnInit, OnChanges, AfterViewChecked {
   }
 
   formatTimestamp(timestamp: number): string {
-    return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return timestamp ? new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
   }
 
   getMessageClasses(message: Message): any {

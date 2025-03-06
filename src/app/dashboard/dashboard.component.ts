@@ -107,9 +107,30 @@ export class DashboardComponent implements OnInit, OnDestroy {
     if (unassigned.length === 0) return '0 min';
     
     const now = Date.now();
-    const totalWaitTimeMs = unassigned.reduce((total, item) => total + (now - item.startTime), 0);
-    const avgWaitTimeMin = Math.floor(totalWaitTimeMs / unassigned.length / 60000);
+    let totalWaitTimeMs = 0;
+    let validItems = 0;
+    
+    // Only count items with valid startTime values
+    for (const item of unassigned) {
+      if (item.startTime && item.startTime > 0) {
+        totalWaitTimeMs += (now - item.startTime);
+        validItems++;
+      }
+    }
+    
+    // If no valid items found, return 0
+    if (validItems === 0) return '0 min';
+    
+    // Calculate average wait time in minutes
+    const avgWaitTimeMin = Math.floor(totalWaitTimeMs / validItems / 60000);
     
     return `${avgWaitTimeMin} min`;
+  }
+
+  // Método para limpiar caché y refrescar conversaciones
+  clearConversationsCache(): void {
+    this.conversationService.clearCachedConversations();
+    alert('Caché de conversaciones limpiado. Se refrescarán las conversaciones.');
+    this.conversationService.requestQueueUpdate();
   }
 }

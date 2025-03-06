@@ -8,19 +8,31 @@ export enum ConversationStatus {
 }
 
 export interface QueueItem {
+  // Campo para el ID en el formato del backend
+  id?: string;
+  // Campo para el ID de conversación formato interno
   conversationId: string;
-  from: string;
-  phone_number_id: string;
+  // Número de teléfono o identificador del remitente
+  from?: string;
+  // ID del número de teléfono
+  phone_number_id?: string;
+  // Tiempo de inicio
   startTime: number;
+  // Prioridad
   priority: number;
+  // Etiquetas
   tags: string[];
+  // Agente asignado
   assignedAgent: string | null;
+  // Mensajes
   messages: Message[];
-  metadata: {
+  // Metadatos adicionales
+  metadata?: {
     escalationReason?: string;
     userLocation?: string;
     previousInteractions?: number;
     customFields?: Record<string, any>;
+    isNewConversation?: boolean;
   };
 }
 
