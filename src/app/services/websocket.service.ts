@@ -3,6 +3,7 @@ import { Observable, Subject, BehaviorSubject } from 'rxjs';
 import { AuthService } from './auth.service';
 import { environment } from '../../environments/environment';
 import { filter, map } from 'rxjs/operators';
+import { Agent } from '../models/agent.model';
 
 interface WebSocketMessage {
   type: string;
@@ -38,6 +39,17 @@ export class WebsocketService {
         this.disconnect();
       }
     });
+
+    // Add handler for agent status updates
+    this.onMessage<{agent: Agent}>('agent:status:updated').subscribe(
+      data => {
+        if (data.agent) {
+          // Update the current agent in the auth service
+          this.authService.updateCurrentAgent(data.agent);
+          console.log('Received agent status update via WebSocket:', data.agent.status);
+        }
+      }
+    );
   }
 
   public connect(): Promise<void> {

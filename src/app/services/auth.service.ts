@@ -1,6 +1,6 @@
 import { Injectable, PLATFORM_ID, Inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { BehaviorSubject, Observable, of } from 'rxjs';
+import { BehaviorSubject, Observable, of, throwError } from 'rxjs';
 import { map, tap, catchError } from 'rxjs/operators';
 import { isPlatformBrowser } from '@angular/common';
 import { JwtHelperService } from '@auth0/angular-jwt';
@@ -17,7 +17,7 @@ export class AuthService {
   private jwtHelper = new JwtHelperService();
   private currentAgentSubject = new BehaviorSubject<Agent | null>(null);
   public currentAgent$ = this.currentAgentSubject.asObservable();
-  private isBrowser: boolean;
+  public isBrowser: boolean;
 
   constructor(
     private http: HttpClient,
@@ -127,5 +127,29 @@ export class AuthService {
 
   getCurrentAgent(): Agent | null {
     return this.currentAgentSubject.value;
+  }
+
+  // New methods for agent status management
+  updateCurrentAgent(agent: Agent): void {
+    if (!agent) return;
+    
+    console.log('Updating current agent:', agent);
+    
+    // Update the current agent in memory
+    this.currentAgentSubject.next(agent);
+    
+    // Also update in localStorage if browser
+    if (this.isBrowser) {
+      localStorage.setItem('agent', JSON.stringify(agent));
+    }
+  }
+
+  // Add this method to refresh the current agent data from server
+  refreshCurrentAgent(): Observable<Agent> {
+    return this.http.get<Agent>(`${this.apiUrl}/me`).pipe(
+      tap(agent => {
+        this.updateCurrentAgent(agent);
+      })
+    );
   }
 }

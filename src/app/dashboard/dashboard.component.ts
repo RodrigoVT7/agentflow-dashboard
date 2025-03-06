@@ -103,17 +103,36 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   getTotalWaitingTime(): string {
-    const unassigned = this.queue.filter(item => !item.assignedAgent);
-    if (unassigned.length === 0) return '0 min';
+    // Get all conversations in the queue
+    const allConversations = this.queue;
+    if (allConversations.length === 0) return '0 min';
     
     const now = Date.now();
     let totalWaitTimeMs = 0;
     let validItems = 0;
     
-    // Only count items with valid startTime values
-    for (const item of unassigned) {
+    // Calculate wait time for ALL conversations, not just unassigned ones
+    for (const item of allConversations) {
       if (item.startTime && item.startTime > 0) {
-        totalWaitTimeMs += (now - item.startTime);
+        // For assigned conversations, calculate how long they waited before assignment
+        if (item.assignedAgent) {
+          // Try to safely access assignedTime from metadata if it exists
+          const assignedTime = item.metadata && 
+                              typeof item.metadata === 'object' && 
+                              'assignedTime' in item.metadata ? 
+                              (item.metadata as any).assignedTime : null;
+          
+          if (assignedTime && typeof assignedTime === 'number') {
+            // Use the recorded assignment time if available
+            totalWaitTimeMs += (assignedTime - item.startTime);
+          } else {
+            // Otherwise, use current time as an approximation
+            totalWaitTimeMs += (now - item.startTime);
+          }
+        } else {
+          // For unassigned conversations, use current time
+          totalWaitTimeMs += (now - item.startTime);
+        }
         validItems++;
       }
     }

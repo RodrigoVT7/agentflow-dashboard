@@ -116,21 +116,18 @@ export class ChatComponent implements OnInit, OnChanges, AfterViewChecked {
     // Reset the form before sending to prevent duplicate messages
     this.messageForm.reset();
     
-    // Send message via WebSocket for immediate response
-    this.conversationService.sendMessageWs(
-      this.conversation.conversationId, 
-      messageText
-    );
-    
-    // Also send via HTTP endpoint
+    // CRITICAL CHANGE: Use HTTP instead of WebSocket for sending messages
+    // This helps prevent the duplication issue as HTTP is more "atomic"
     this.conversationService.sendMessage(
       this.conversation.conversationId, 
       messageText
     ).subscribe({
       next: (response) => {
-        // Replace the temporary message with the confirmed one from server if needed
-        // This step might not be necessary if the WebSocket handles it
+        console.log('Message sent successfully via HTTP');
         this.sending = false;
+        
+        // Ensure the conversation is now updated in our local state
+        this.conversationService.refreshConversation(this.conversation.conversationId);
       },
       error: (error) => {
         console.error('Error sending message:', error);
