@@ -50,18 +50,23 @@ export class LoginComponent implements OnInit {
     if (this.loginForm.invalid) {
       return;
     }
-
+  
     this.loading = true;
     this.errorMessage = '';
-
+  
     this.authService.login(this.loginForm.value)
       .subscribe({
         next: () => {
-          this.router.navigate([this.returnUrl]);
+          console.log('[LoginComponent] Login successful, delaying redirect to ensure token is stored');
+          // Add a small delay to ensure token is stored before redirect
+          setTimeout(() => {
+            this.router.navigate([this.returnUrl]);
+          }, 500);
         },
         error: error => {
           this.errorMessage = error.error?.error || 'Login failed. Please check your credentials.';
           this.loading = false;
+          console.error('[LoginComponent] Login error:', error);
         }
       });
   }

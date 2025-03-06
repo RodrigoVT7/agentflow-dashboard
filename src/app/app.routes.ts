@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { inject } from '@angular/core'; // Add this import
+import { inject } from '@angular/core'; 
 
 // Components
 import { LoginComponent } from './auth/login/login.component';

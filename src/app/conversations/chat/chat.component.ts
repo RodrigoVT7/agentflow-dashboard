@@ -49,6 +49,13 @@ export class ChatComponent implements OnInit, OnChanges, AfterViewChecked {
     this.scrollToBottom();
   }
 
+  /**
+   * Checks if an agent is assigned to the current conversation
+   */
+  isAgentAssigned(): boolean {
+    return !!this.conversation?.assignedAgent;
+  }
+
   private scrollToBottom(): void {
     try {
       if (this.chatMessages) {
@@ -85,6 +92,21 @@ export class ChatComponent implements OnInit, OnChanges, AfterViewChecked {
     
     this.sending = true;
     
+    // Create an optimistic message to display immediately
+    const tempId = 'temp-' + Date.now();
+    const optimisticMessage: Message = {
+      id: tempId,
+      conversationId: this.conversation.conversationId,
+      from: MessageSender.AGENT,
+      text: messageText,
+      timestamp: Date.now(),
+      agentId: this.authService.getCurrentAgent()?.id
+    };
+    
+    // Add to local messages immediately (optimistic update)
+    this.messages = [...this.messages, optimisticMessage];
+    this.scrollToBottom();
+    
     // Send message via WebSocket for immediate response
     this.conversationService.sendMessageWs(
       this.conversation.conversationId, 
@@ -96,13 +118,26 @@ export class ChatComponent implements OnInit, OnChanges, AfterViewChecked {
       this.conversation.conversationId, 
       messageText
     ).subscribe({
-      next: () => {
+      next: (response) => {
+        // Replace the temporary message with the confirmed one from server if needed
+        // This step might not be necessary if the WebSocket handles it
         this.messageForm.reset();
         this.sending = false;
       },
       error: (error) => {
         console.error('Error sending message:', error);
         this.sending = false;
+        
+        // Mark the optimistic message as failed
+        const index = this.messages.findIndex(m => m.id === tempId);
+        if (index !== -1) {
+          const updatedMessages = [...this.messages];
+          updatedMessages[index] = {
+            ...updatedMessages[index],
+            metadata: { error: 'Failed to send' }
+          };
+          this.messages = updatedMessages;
+        }
       }
     });
   }

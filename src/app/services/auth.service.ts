@@ -1,7 +1,8 @@
-import { Injectable } from '@angular/core';
+import { Injectable, PLATFORM_ID, Inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, Observable, of } from 'rxjs';
 import { map, tap, catchError } from 'rxjs/operators';
+import { isPlatformBrowser } from '@angular/common';
 import { JwtHelperService } from '@auth0/angular-jwt';
 
 import { LoginCredentials, AuthResponse, DecodedToken } from '../models/auth.model';
@@ -16,29 +17,43 @@ export class AuthService {
   private jwtHelper = new JwtHelperService();
   private currentAgentSubject = new BehaviorSubject<Agent | null>(null);
   public currentAgent$ = this.currentAgentSubject.asObservable();
+  private isBrowser: boolean;
 
-  constructor(private http: HttpClient) {
+  constructor(
+    private http: HttpClient,
+    @Inject(PLATFORM_ID) private platformId: Object
+  ) {
+    this.isBrowser = isPlatformBrowser(this.platformId);
     this.loadCurrentAgent();
   }
 
   private loadCurrentAgent(): void {
-    const token = localStorage.getItem('token');
-    if (token && !this.jwtHelper.isTokenExpired(token)) {
-      const agent = JSON.parse(localStorage.getItem('agent') || '{}');
-      this.currentAgentSubject.next(agent);
+    if (this.isBrowser) {
+      const token = localStorage.getItem('token');
+      if (token && !this.jwtHelper.isTokenExpired(token)) {
+        const agent = JSON.parse(localStorage.getItem('agent') || '{}');
+        this.currentAgentSubject.next(agent);
+      }
     }
   }
 
   login(credentials: LoginCredentials): Observable<AuthResponse> {
+    console.log('[AuthService] Attempting login');
     return this.http.post<AuthResponse>(`${this.apiUrl}/login`, credentials)
       .pipe(
         tap(response => {
-          localStorage.setItem('token', response.token);
-          localStorage.setItem('agent', JSON.stringify(response.agent));
+          console.log('[AuthService] Login successful, storing token');
+          if (this.isBrowser) {
+            localStorage.setItem('token', response.token);
+            localStorage.setItem('agent', JSON.stringify(response.agent));
+            // Log token information (but not the actual token for security)
+            console.log('[AuthService] Token stored, expires in:', response.expiresIn);
+          }
           this.currentAgentSubject.next(response.agent);
         })
       );
   }
+  
 
   logout(): Observable<any> {
     // Call the backend logout endpoint
@@ -53,8 +68,10 @@ export class AuthService {
   }
 
   private clearLocalStorage(): void {
-    localStorage.removeItem('token');
-    localStorage.removeItem('agent');
+    if (this.isBrowser) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('agent');
+    }
     this.currentAgentSubject.next(null);
   }
 
@@ -66,20 +83,31 @@ export class AuthService {
     return this.http.post<AuthResponse>(`${this.apiUrl}/refresh`, {})
       .pipe(
         tap(response => {
-          localStorage.setItem('token', response.token);
-          localStorage.setItem('agent', JSON.stringify(response.agent));
+          if (this.isBrowser) {
+            localStorage.setItem('token', response.token);
+            localStorage.setItem('agent', JSON.stringify(response.agent));
+          }
           this.currentAgentSubject.next(response.agent);
         })
       );
   }
 
   getToken(): string {
-    return localStorage.getItem('token') || '';
+    if (this.isBrowser) {
+      const token = localStorage.getItem('token') || '';
+      const hasToken = !!token;
+      console.log('[AuthService] getToken called, token exists:', hasToken);
+      return token;
+    }
+    console.log('[AuthService] getToken called in SSR mode, returning empty string');
+    return '';
   }
 
   isLoggedIn(): boolean {
     const token = this.getToken();
-    return token ? !this.jwtHelper.isTokenExpired(token) : false;
+    const isValid = token ? !this.jwtHelper.isTokenExpired(token) : false;
+    console.log('[AuthService] isLoggedIn called, result:', isValid);
+    return isValid;
   }
 
   isAdmin(): boolean {

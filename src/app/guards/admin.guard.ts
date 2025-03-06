@@ -1,7 +1,11 @@
+import { Injectable } from '@angular/core';
 import { inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from '../services/auth.service';
 
+@Injectable({
+  providedIn: 'root'
+})
 export class AdminGuard {
   private router = inject(Router);
   private authService = inject(AuthService);

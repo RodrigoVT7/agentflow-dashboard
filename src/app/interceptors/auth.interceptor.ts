@@ -18,6 +18,9 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   // Add auth token to request if available
   const token = authService.getToken();
   
+  // Log for debugging
+  console.log(`[AuthInterceptor] Request to ${req.url}, token exists: ${!!token}`);
+  
   if (token) {
     req = addTokenToRequest(req, token);
   }
@@ -26,11 +29,14 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   return next(req).pipe(
     catchError(error => {
       if (error instanceof HttpErrorResponse && error.status === 401) {
+        console.log('[AuthInterceptor] Got 401 response from:', req.url);
+        
         // Try token refresh if the error has an "expired" field
         if (error.error?.expired) {
           return handleRefreshToken(req, next, authService, router);
         } else {
           // Otherwise log out
+          console.log('[AuthInterceptor] Token invalid, logging out');
           authService.logout().subscribe(() => {
             router.navigate(['/login']);
           });
@@ -43,6 +49,7 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
 };
 
 function addTokenToRequest(req: HttpRequest<unknown>, token: string): HttpRequest<unknown> {
+  console.log(`[AuthInterceptor] Adding token to request: ${req.url}`);
   return req.clone({
     setHeaders: {
       Authorization: `Bearer ${token}`
@@ -60,17 +67,21 @@ function handleRefreshToken(
   if (!state.isRefreshing) {
     state.isRefreshing = true;
     state.refreshTokenSubject.next(null);
+    
+    console.log('[AuthInterceptor] Attempting to refresh token');
 
     return authService.refreshToken().pipe(
       switchMap(response => {
         state.isRefreshing = false;
         state.refreshTokenSubject.next(response.token);
         
+        console.log('[AuthInterceptor] Token refreshed successfully');
         return next(addTokenToRequest(req, response.token));
       }),
       catchError(err => {
         state.isRefreshing = false;
         
+        console.log('[AuthInterceptor] Token refresh failed, logging out');
         // If refresh fails, log out
         authService.logout().subscribe(() => {
           router.navigate(['/login']);
@@ -80,6 +91,7 @@ function handleRefreshToken(
       })
     );
   } else {
+    console.log('[AuthInterceptor] Waiting for token refresh to complete');
     // Wait for token refresh to complete
     return state.refreshTokenSubject.pipe(
       filter(token => token !== null),

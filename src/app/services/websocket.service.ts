@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { Observable, Subject } from 'rxjs';
+import { Observable, Subject, BehaviorSubject } from 'rxjs';
 import { AuthService } from './auth.service';
 import { environment } from '../../environments/environment';
 import { filter, map } from 'rxjs/operators';
@@ -21,6 +21,9 @@ export class WebsocketService {
   private maxReconnectAttempts = 5;
   private lastPongTime = 0;
   private pingInterval: any;
+  private messageQueue: {type: string, payload: any}[] = [];
+  private isConnected = new BehaviorSubject<boolean>(false);
+  public isConnected$ = this.isConnected.asObservable();
 
   constructor(private authService: AuthService) {
     // Auto-reconnect when authentication state changes
@@ -33,53 +36,67 @@ export class WebsocketService {
     });
   }
 
-  public connect(): void {
+  public connect(): Promise<void> {
     if (this.socket && (this.socket.readyState === WebSocket.OPEN || this.socket.readyState === WebSocket.CONNECTING)) {
-      return;
+      return Promise.resolve();
     }
 
     const token = this.authService.getToken();
     if (!token) {
       console.error('No authentication token available');
-      return;
+      return Promise.reject('No authentication token available');
     }
 
-    const wsUrl = `${environment.wsUrl}?token=${token}`;
-    this.socket = new WebSocket(wsUrl);
+    return new Promise((resolve, reject) => {
+      const wsUrl = `${environment.wsUrl}?token=${token}`;
+      this.socket = new WebSocket(wsUrl);
 
-    this.socket.onopen = () => {
-      console.log('WebSocket connected');
-      this.reconnectAttempts = 0;
-      this.startPingPong();
-    };
-
-    this.socket.onmessage = (event) => {
-      try {
-        const message = JSON.parse(event.data) as WebSocketMessage;
-        this.messageSubject.next(message);
+      this.socket.onopen = () => {
+        console.log('WebSocket connected');
+        this.reconnectAttempts = 0;
+        this.isConnected.next(true);
+        this.startPingPong();
         
-        // Handle ping/pong for connection health
-        if (message.type === 'pong') {
-          this.lastPongTime = Date.now();
+        // Process any queued messages
+        this.processQueue();
+        resolve();
+      };
+
+      this.socket.onmessage = (event) => {
+        try {
+          const message = JSON.parse(event.data) as WebSocketMessage;
+          this.messageSubject.next(message);
+          
+          // Handle ping/pong for connection health
+          if (message.type === 'pong') {
+            this.lastPongTime = Date.now();
+          }
+        } catch (error) {
+          console.error('Error parsing WebSocket message', error);
         }
-      } catch (error) {
-        console.error('Error parsing WebSocket message', error);
-      }
-    };
+      };
 
-    this.socket.onclose = (event) => {
-      console.log('WebSocket connection closed', event);
-      this.stopPingPong();
-      
-      if (this.reconnectAttempts < this.maxReconnectAttempts && this.authService.isLoggedIn()) {
-        this.reconnectAttempts++;
-        setTimeout(() => this.connect(), this.reconnectInterval);
-      }
-    };
+      this.socket.onclose = (event) => {
+        console.log('WebSocket connection closed', event);
+        this.isConnected.next(false);
+        this.stopPingPong();
+        
+        if (this.reconnectAttempts < this.maxReconnectAttempts && this.authService.isLoggedIn()) {
+          this.reconnectAttempts++;
+          setTimeout(() => this.connect(), this.reconnectInterval);
+        }
+        
+        if (!event.wasClean) {
+          reject('WebSocket connection closed unexpectedly');
+        }
+      };
 
-    this.socket.onerror = (error) => {
-      console.error('WebSocket error', error);
-    };
+      this.socket.onerror = (error) => {
+        console.error('WebSocket error', error);
+        this.isConnected.next(false);
+        reject(error);
+      };
+    });
   }
 
   // Start ping-pong to keep connection alive
@@ -108,6 +125,7 @@ export class WebsocketService {
 
   public disconnect(): void {
     this.stopPingPong();
+    this.isConnected.next(false);
     
     if (this.socket) {
       this.socket.close();
@@ -122,9 +140,9 @@ export class WebsocketService {
 
   public send(type: string, payload: any): void {
     if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
-      console.error('WebSocket is not connected');
-      // Attempt to reconnect
-      this.reconnect();
+      console.log('WebSocket not connected, queueing message:', type);
+      this.messageQueue.push({ type, payload });
+      this.connect().catch(err => console.error('Error connecting WebSocket:', err));
       return;
     }
 
@@ -135,6 +153,19 @@ export class WebsocketService {
     };
 
     this.socket.send(JSON.stringify(message));
+  }
+  
+  private processQueue(): void {
+    if (this.messageQueue.length === 0) return;
+    
+    console.log(`Processing ${this.messageQueue.length} queued WebSocket messages`);
+    
+    while (this.messageQueue.length > 0) {
+      const message = this.messageQueue.shift();
+      if (message) {
+        this.send(message.type, message.payload);
+      }
+    }
   }
 
   public onMessage<T>(type?: string): Observable<T> {

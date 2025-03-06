@@ -34,12 +34,24 @@ export class DashboardComponent implements OnInit, OnDestroy {
     
     // Subscribe to queue updates
     this.queueSubscription = this.conversationService.queue$.subscribe(queue => {
-      this.queue = queue;
+      // Ensure each queue item has a messages array
+      this.queue = queue.map(item => ({
+        ...item,
+        messages: item.messages || []
+      }));
     });
     
     // Subscribe to active conversation
     this.activeConversationSubscription = this.conversationService.activeConversation$.subscribe(conversation => {
-      this.activeConversation = conversation;
+      if (conversation) {
+        // Ensure the active conversation has a messages array
+        this.activeConversation = {
+          ...conversation,
+          messages: conversation.messages || []
+        };
+      } else {
+        this.activeConversation = null;
+      }
     });
     
     // Request initial queue data
@@ -60,7 +72,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   selectConversation(conversation: QueueItem): void {
-    this.conversationService.setActiveConversation(conversation);
+    // Ensure the conversation we're selecting has a messages array
+    const conversationWithMessages = {
+      ...conversation,
+      messages: conversation.messages || []
+    };
+    this.conversationService.setActiveConversation(conversationWithMessages);
   }
 
   assignToMe(conversationId: string): void {

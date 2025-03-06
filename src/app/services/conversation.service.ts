@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, Observable } from 'rxjs';
-import { tap } from 'rxjs/operators';
+import { tap, map, take } from 'rxjs/operators';
 
 import { QueueItem, QueueSummary } from '../models/conversation.model';
 import { Message } from '../models/message.model';
@@ -20,6 +20,8 @@ export class ConversationService {
   
   private activeConversationSubject = new BehaviorSubject<QueueItem | null>(null);
   public activeConversation$ = this.activeConversationSubject.asObservable();
+  
+  private readonly COMPLETED_CONVERSATIONS_KEY = 'completed_conversations';
 
   constructor(
     private http: HttpClient,
@@ -28,7 +30,12 @@ export class ConversationService {
   ) {
     // Listen for queue updates from WebSocket
     this.wsService.onMessage<QueueItem[]>('queue:updated').subscribe(
-      queue => this.queueSubject.next(queue)
+      queue => {
+        // Filter out completed conversations
+        const completedIds = this.getCompletedConversationIds();
+        const filteredQueue = queue.filter(item => !completedIds.includes(item.conversationId));
+        this.queueSubject.next(filteredQueue);
+      }
     );
     
     // Listen for conversation updates
@@ -62,13 +69,64 @@ export class ConversationService {
         
         // Remove from queue
         this.removeFromQueue(data.conversationId);
+        
+        // Store completed conversation ID for persistence across reloads
+        this.storeCompletedConversationId(data.conversationId);
+      }
+    );
+    
+    // Setup listener for new messages
+    this.setupMessageListener();
+  }
+  
+  private setupMessageListener(): void {
+    this.wsService.onMessage<{conversationId: string; message: Message}>('message:new').subscribe(
+      data => {
+        const { conversationId, message } = data;
+        
+        // Update active conversation if it's the one receiving the message
+        const active = this.activeConversationSubject.value;
+        if (active && active.conversationId === conversationId) {
+          const updatedConversation = {...active};
+          updatedConversation.messages = [...updatedConversation.messages, message];
+          this.activeConversationSubject.next(updatedConversation);
+        }
+        
+        // Update queue item
+        this.updateQueueItemMessages(conversationId, message);
       }
     );
   }
 
+  private storeCompletedConversationId(conversationId: string): void {
+    try {
+      const completed = this.getCompletedConversationIds();
+      if (!completed.includes(conversationId)) {
+        completed.push(conversationId);
+        localStorage.setItem(this.COMPLETED_CONVERSATIONS_KEY, JSON.stringify(completed));
+      }
+    } catch (error) {
+      console.error('Error storing completed conversation ID', error);
+    }
+  }
+
+  private getCompletedConversationIds(): string[] {
+    try {
+      const stored = localStorage.getItem(this.COMPLETED_CONVERSATIONS_KEY);
+      return stored ? JSON.parse(stored) : [];
+    } catch (error) {
+      console.error('Error reading completed conversation IDs', error);
+      return [];
+    }
+  }
+
   getQueue(): Observable<QueueSummary[]> {
     return this.http.get<QueueSummary[]>(`${this.apiUrl}/queue`).pipe(
-      tap(queue => {
+      map(queue => {
+        const completedIds = this.getCompletedConversationIds();
+        return queue.filter(item => !completedIds.includes(item.id));
+      }),
+      tap(filteredQueue => {
         // We don't update the queueSubject here because it contains less information
         // The WebSocket will provide the full queue information
       })
@@ -172,6 +230,19 @@ export class ConversationService {
       this.queueSubject.next(updatedQueue);
     } else {
       this.queueSubject.next([...currentQueue, updatedItem]);
+    }
+  }
+
+  private updateQueueItemMessages(conversationId: string, newMessage: Message): void {
+    const currentQueue = this.queueSubject.value;
+    const index = currentQueue.findIndex(item => item.conversationId === conversationId);
+    
+    if (index !== -1) {
+      const updatedQueue = [...currentQueue];
+      const updatedItem = {...updatedQueue[index]};
+      updatedItem.messages = [...updatedItem.messages, newMessage];
+      updatedQueue[index] = updatedItem;
+      this.queueSubject.next(updatedQueue);
     }
   }
 
