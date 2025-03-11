@@ -2,7 +2,7 @@
     <div class="container-fluid">
       <a class="navbar-brand" routerLink="/dashboard">
         <i class="bi bi-whatsapp me-2"></i>
-        WhatsApp Agent Panel
+        WhatsApp panel de agentes
       </a>
       
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" 
@@ -13,11 +13,11 @@
       <div class="collapse navbar-collapse" id="navbarNav">
         <ul class="navbar-nav me-auto">
           <li class="nav-item">
-            <a class="nav-link" routerLink="/dashboard" routerLinkActive="active">Dashboard</a>
+            <a class="nav-link" routerLink="/dashboard" routerLinkActive="active">Conversaciones</a>
           </li>
           
           <li class="nav-item" *ngIf="isAdmin()">
-            <a class="nav-link" routerLink="/admin/agents" routerLinkActive="active">Manage Agents</a>
+            <a class="nav-link" routerLink="/admin/agents" routerLinkActive="active">Administrar agentes</a>
           </li>
         </ul>
         
@@ -37,17 +37,17 @@
             </button>
             <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="statusDropdown">
               <li><button class="dropdown-item" (click)="updateStatus(AgentStatus.ONLINE)">
-                <i class="bi bi-circle-fill text-success me-2" style="font-size: 0.6rem;"></i> Online
+                <i class="bi bi-circle-fill text-success me-2" style="font-size: 0.6rem;"></i> En Linea
               </button></li>
               <li><button class="dropdown-item" (click)="updateStatus(AgentStatus.BUSY)">
-                <i class="bi bi-circle-fill text-warning me-2" style="font-size: 0.6rem;"></i> Busy
+                <i class="bi bi-circle-fill text-warning me-2" style="font-size: 0.6rem;"></i> Ocupado
               </button></li>
               <li><button class="dropdown-item" (click)="updateStatus(AgentStatus.AWAY)">
-                <i class="bi bi-circle-fill text-secondary me-2" style="font-size: 0.6rem;"></i> Away
+                <i class="bi bi-circle-fill text-secondary me-2" style="font-size: 0.6rem;"></i> No disponible
               </button></li>
               <li><hr class="dropdown-divider"></li>
               <li><button class="dropdown-item" (click)="updateStatus(AgentStatus.OFFLINE)">
-                <i class="bi bi-circle-fill text-danger me-2" style="font-size: 0.6rem;"></i> Offline
+                <i class="bi bi-circle-fill text-danger me-2" style="font-size: 0.6rem;"></i> Desconectado
               </button></li>
             </ul>
           </div>
@@ -63,8 +63,8 @@
               <li><h6 class="dropdown-header">{{ currentAgent.email }}</h6></li>
               <li><h6 class="dropdown-header text-muted">{{ currentAgent.role }}</h6></li>
               <li><hr class="dropdown-divider"></li>
-              <li><a class="dropdown-item" href="#"><i class="bi bi-gear me-2"></i> Settings</a></li>
-              <li><button class="dropdown-item" (click)="logout()"><i class="bi bi-box-arrow-right me-2"></i> Logout</button></li>
+              <li><a class="dropdown-item" href="#"><i class="bi bi-gear me-2"></i> Configuraciones </a></li>
+              <li><button class="dropdown-item" (click)="logout()"><i class="bi bi-box-arrow-right me-2"></i> Cerrar sesión </button></li>
             </ul>
           </div>
         </div>

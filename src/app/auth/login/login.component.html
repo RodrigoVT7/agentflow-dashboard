@@ -3,37 +3,37 @@
       <div class="col-md-6 col-lg-4">
         <div class="card shadow">
           <div class="card-body">
-            <h2 class="card-title text-center mb-4">Agent Login</h2>
+            <h2 class="card-title text-center mb-4">Inicio de sesión de agentes</h2>
             
             <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
               <!-- Email Field -->
               <div class="mb-3">
-                <label for="email" class="form-label">Email</label>
+                <label for="email" class="form-label">Usuario</label>
                 <input 
                   type="email" 
                   id="email" 
                   formControlName="email" 
                   class="form-control" 
                   [ngClass]="{ 'is-invalid': f['email'].touched && f['email'].errors }"
-                  placeholder="Enter your email"
+                  placeholder="Ingresa tu usuario"
                   autocomplete="email"
                 >
                 <div *ngIf="f['email'].touched && f['email'].errors" class="invalid-feedback">
-                  <div *ngIf="f['email'].errors['required']">Email is required</div>
-                  <div *ngIf="f['email'].errors['email']">Please enter a valid email</div>
+                  <div *ngIf="f['email'].errors['required']">Usuario es obligatorio</div>
+                  <div *ngIf="f['email'].errors['email']">Introduce bien tu usuario</div>
                 </div>
               </div>
               
               <!-- Password Field -->
               <div class="mb-3">
-                <label for="password" class="form-label">Password</label>
+                <label for="password" class="form-label">Contraseña</label>
                 <input 
                   type="password" 
                   id="password" 
                   formControlName="password" 
                   class="form-control" 
                   [ngClass]="{ 'is-invalid': f['password'].touched && f['password'].errors }"
-                  placeholder="Enter your password"
+                  placeholder="Ingresa tu contraseña"
                   autocomplete="current-password"
                 >
                 <div *ngIf="f['password'].touched && f['password'].errors" class="invalid-feedback">

@@ -32,7 +32,7 @@
                   formControlName="email" 
                   class="form-control" 
                   [ngClass]="{ 'is-invalid': f['email'].touched && f['email'].errors }"
-                  placeholder="Enter your email"
+                  placeholder="Ingresa tu usuario"
                 >
                 <div *ngIf="f['email'].touched && f['email'].errors" class="invalid-feedback">
                   <div *ngIf="f['email'].errors['required']">Email is required</div>

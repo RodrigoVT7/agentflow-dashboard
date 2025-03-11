@@ -1,77 +1,102 @@
 .chat-messages {
-    height: 50vh;
-    overflow-y: auto;
-    background-color: #f8f9fa;
-    padding: 15px;
-    border-radius: 5px;
+  height: 50vh;
+  overflow-y: auto;
+  background-color: #f8f9fa;
+  padding: 15px;
+  border-radius: 5px;
+}
+
+.chat-message {
+  margin-bottom: 15px;
+}
+
+.message-content {
+  max-width: 80%;
+  padding: 10px;
+  border-radius: 10px;
+  position: relative;
+}
+
+.user-message .message-content {
+  background-color: #e9ecef;
+  margin-right: auto;
+  border-bottom-left-radius: 0;
+}
+
+.bot-message .message-content {
+  background-color: #d6ebff;
+  margin-right: auto;
+  border-bottom-left-radius: 0;
+}
+
+.agent-message .message-content {
+  background-color: #dcf8c6;
+  margin-left: auto;
+  border-bottom-right-radius: 0;
+}
+
+.agent-message .my-message {
+  background-color: #b3e6b3;
+}
+
+.system-message .message-content {
+  background-color: #f0f0f0;
+  margin-left: auto;
+  margin-right: auto;
+  text-align: center;
+  max-width: 90%;
+}
+
+.system-notification {
+  font-style: italic;
+  color: #6c757d;
+}
+
+.message-header {
+  margin-bottom: 5px;
+  font-weight: bold;
+}
+
+.message-text {
+  word-break: break-word;
+}
+
+.message-time {
+  font-size: 0.75rem;
+  color: #6c757d;
+  text-align: right;
+  display: block;
+  margin-top: 5px;
+}
+
+/* Failed message styling */
+.failed-message .message-content {
+  border: 1px solid #dc3545;
+}
+
+/* Animation for new messages */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
   }
-  
-  .chat-message {
-    margin-bottom: 15px;
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
-  
+}
+
+.chat-message {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* Styles for when the window gets smaller */
+@media (max-width: 768px) {
   .message-content {
-    max-width: 80%;
-    padding: 10px;
-    border-radius: 10px;
-    position: relative;
-  }
-  
-  .user-message .message-content {
-    background-color: #e9ecef;
-    margin-right: auto;
-    border-bottom-left-radius: 0;
-  }
-  
-  .bot-message .message-content {
-    background-color: #d6ebff;
-    margin-right: auto;
-    border-bottom-left-radius: 0;
-  }
-  
-  .agent-message .message-content {
-    background-color: #dcf8c6;
-    margin-left: auto;
-    border-bottom-right-radius: 0;
-  }
-  
-  .agent-message .my-message {
-    background-color: #b3e6b3;
-  }
-  
-  .system-message .message-content {
-    background-color: #f0f0f0;
-    margin-left: auto;
-    margin-right: auto;
-    text-align: center;
     max-width: 90%;
   }
   
-  .system-notification {
-    font-style: italic;
-    color: #6c757d;
+  .chat-messages {
+    height: 40vh;
   }
-  
-  .message-header {
-    margin-bottom: 5px;
-    font-weight: bold;
-  }
-  
-  .message-text {
-    word-break: break-word;
-  }
-  
-  .message-time {
-    font-size: 0.75rem;
-    color: #6c757d;
-    text-align: right;
-    display: block;
-    margin-top: 5px;
-  }
-  
-  /* Styles for when the window gets smaller */
-  @media (max-width: 768px) {
-    .message-content {
-      max-width: 90%;
-    }
-  }
+}

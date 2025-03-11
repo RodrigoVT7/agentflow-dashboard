@@ -6,6 +6,7 @@ import { Message, MessageSender } from '../../models/message.model';
 import { ConversationService } from '../../services/conversation.service';
 import { AuthService } from '../../services/auth.service';
 import { CommonModule } from '@angular/common';
+import { finalize } from 'rxjs/operators';
 
 @Component({
   selector: 'app-chat',
@@ -22,6 +23,7 @@ export class ChatComponent implements OnInit, OnChanges, AfterViewChecked {
   messageForm: FormGroup;
   sending = false;
   MessageSender = MessageSender; // For template access
+  errorMessage = '';
   
   constructor(
     private formBuilder: FormBuilder,
@@ -79,10 +81,35 @@ export class ChatComponent implements OnInit, OnChanges, AfterViewChecked {
     
     // Then load any additional messages from the API
     this.conversationService.getMessages(this.conversation.conversationId)
-      .subscribe(messages => {
-        // Filter out invalid messages
-        this.messages = messages.filter(m => !!m && !!m.text && !!m.from);
-        setTimeout(() => this.scrollToBottom(), 100);
+      .subscribe({
+        next: messages => {
+          // Merge messages and remove duplicates by ID
+          const uniqueMessages = new Map<string, Message>();
+          
+          // Add existing messages
+          this.messages.forEach(msg => {
+            if (msg.id) {
+              uniqueMessages.set(msg.id, msg);
+            }
+          });
+          
+          // Add new messages, overwriting existing ones with the same ID
+          messages.filter(m => !!m && !!m.text && !!m.from).forEach(msg => {
+            if (msg.id) {
+              uniqueMessages.set(msg.id, msg);
+            }
+          });
+          
+          // Convert back to array and sort by timestamp
+          this.messages = Array.from(uniqueMessages.values())
+            .sort((a, b) => a.timestamp - b.timestamp);
+          
+          setTimeout(() => this.scrollToBottom(), 100);
+        },
+        error: error => {
+          console.error('Error loading messages:', error);
+          this.errorMessage = 'Failed to load messages. Please try again.';
+        }
       });
   }
 
@@ -97,6 +124,7 @@ export class ChatComponent implements OnInit, OnChanges, AfterViewChecked {
     }
     
     this.sending = true;
+    this.errorMessage = '';
     
     // Create an optimistic message to display immediately
     const tempId = 'temp-' + Date.now();
@@ -116,22 +144,35 @@ export class ChatComponent implements OnInit, OnChanges, AfterViewChecked {
     // Reset the form before sending to prevent duplicate messages
     this.messageForm.reset();
     
-    // CRITICAL CHANGE: Use HTTP instead of WebSocket for sending messages
-    // This helps prevent the duplication issue as HTTP is more "atomic"
+    // Send the message via HTTP
     this.conversationService.sendMessage(
       this.conversation.conversationId, 
       messageText
+    ).pipe(
+      finalize(() => {
+        this.sending = false;
+      })
     ).subscribe({
       next: (response) => {
-        console.log('Message sent successfully via HTTP');
-        this.sending = false;
+        console.log('Message sent successfully');
         
-        // Ensure the conversation is now updated in our local state
+        // Update the optimistic message with the real message ID
+        const index = this.messages.findIndex(m => m.id === tempId);
+        if (index !== -1) {
+          const updatedMessages = [...this.messages];
+          updatedMessages[index] = {
+            ...updatedMessages[index],
+            id: response.messageId
+          };
+          this.messages = updatedMessages;
+        }
+        
+        // Refresh the conversation to get the latest state
         this.conversationService.refreshConversation(this.conversation.conversationId);
       },
       error: (error) => {
         console.error('Error sending message:', error);
-        this.sending = false;
+        this.errorMessage = 'Failed to send message. Please try again.';
         
         // Mark the optimistic message as failed
         const index = this.messages.findIndex(m => m.id === tempId);
@@ -149,20 +190,30 @@ export class ChatComponent implements OnInit, OnChanges, AfterViewChecked {
 
   completeConversation(): void {
     if (confirm('Are you sure you want to complete this conversation?')) {
-      // Complete via WebSocket for immediate response
-      this.conversationService.completeConversationWs(this.conversation.conversationId);
-      
-      // Also complete via HTTP endpoint
       this.conversationService.completeConversation(this.conversation.conversationId)
-        .subscribe(() => {
-          // Conversation will be removed from active in service
+        .subscribe({
+          next: () => {
+            console.log('Conversation completed successfully');
+          },
+          error: (error) => {
+            console.error('Error completing conversation:', error);
+            this.errorMessage = 'Failed to complete conversation. Please try again.';
+          }
         });
     }
   }
 
   updatePriority(priority: number): void {
     this.conversationService.updatePriority(this.conversation.conversationId, priority)
-      .subscribe();
+      .subscribe({
+        next: () => {
+          console.log(`Priority updated to ${priority}`);
+        },
+        error: (error) => {
+          console.error('Error updating priority:', error);
+          this.errorMessage = 'Failed to update priority. Please try again.';
+        }
+      });
   }
 
   formatTimestamp(timestamp: number): string {
@@ -175,12 +226,39 @@ export class ChatComponent implements OnInit, OnChanges, AfterViewChecked {
       'user-message': message.from === MessageSender.USER,
       'bot-message': message.from === MessageSender.BOT,
       'agent-message': message.from === MessageSender.AGENT,
-      'system-message': message.from === MessageSender.SYSTEM
+      'system-message': message.from === MessageSender.SYSTEM,
+      'failed-message': message.metadata && message.metadata['error'] ? true : false
     };
   }
 
   isCurrentAgent(message: Message): boolean {
     return message.from === MessageSender.AGENT && 
            message.agentId === this.authService.getCurrentAgent()?.id;
+  }
+
+  // Check if a message has an error
+  hasError(message: Message): boolean {
+    return !!(message.metadata && message.metadata['error']);
+  }
+
+  // Get error message
+  getErrorMessage(message: Message): string {
+    return message.metadata && message.metadata['error'] 
+      ? message.metadata['error'] 
+      : 'Error sending message';
+  }
+
+  // Retry sending a failed message
+  retryMessage(message: Message): void {
+    // Remove the failed message
+    this.messages = this.messages.filter(m => m.id !== message.id);
+    
+    // Add the text to the input field
+    this.messageForm.setValue({ message: message.text });
+    
+    // Focus the input
+    setTimeout(() => {
+      document.getElementById('messageInput')?.focus();
+    }, 0);
   }
 }

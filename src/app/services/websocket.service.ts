@@ -1,8 +1,9 @@
+// src/app/services/websocket.service.ts
 import { Injectable } from '@angular/core';
 import { Observable, Subject, BehaviorSubject } from 'rxjs';
 import { AuthService } from './auth.service';
 import { environment } from '../../environments/environment';
-import { filter, map } from 'rxjs/operators';
+import { filter, map, finalize } from 'rxjs/operators';
 import { Agent } from '../models/agent.model';
 
 interface WebSocketMessage {
@@ -23,24 +24,23 @@ export class WebsocketService {
   private lastPongTime = 0;
   private pingInterval: any;
   private messageQueue: {type: string, payload: any}[] = [];
+  
+  // Connection status
   private isConnected = new BehaviorSubject<boolean>(false);
-  public isConnected$ = this.isConnected.asObservable();
+  public connected$ = this.isConnected.asObservable();
   
   // For tracking and debouncing recently sent messages
   private lastSentMessages: Record<string, number> = {};
-  private readonly MESSAGE_DEBOUNCE_MS = 1000; // 1 second debounce for messages
+  private readonly MESSAGE_DEBOUNCE_MS = 1000; // 1 second debounce
 
   constructor(private authService: AuthService) {
-    // Auto-reconnect when authentication state changes
-    this.authService.currentAgent$.subscribe(agent => {
-      if (agent) {
-        this.connect();
-      } else {
-        this.disconnect();
-      }
+    // Listen for auth token changes
+    this.authService.tokenRefreshed$.subscribe(() => {
+      console.log('Auth token refreshed, reconnecting WebSocket');
+      this.reconnect();
     });
 
-    // Add handler for agent status updates
+    // Handle agent status updates
     this.onMessage<{agent: Agent}>('agent:status:updated').subscribe(
       data => {
         if (data.agent) {
@@ -52,8 +52,11 @@ export class WebsocketService {
     );
   }
 
+  // Connect to WebSocket server
   public connect(): Promise<void> {
-    if (this.socket && (this.socket.readyState === WebSocket.OPEN || this.socket.readyState === WebSocket.CONNECTING)) {
+    // Don't reconnect if already connected or connecting
+    if (this.socket && (this.socket.readyState === WebSocket.OPEN || 
+                        this.socket.readyState === WebSocket.CONNECTING)) {
       return Promise.resolve();
     }
 
@@ -65,6 +68,8 @@ export class WebsocketService {
 
     return new Promise((resolve, reject) => {
       const wsUrl = `${environment.wsUrl}?token=${token}`;
+      console.log('Connecting to WebSocket at:', wsUrl);
+      
       this.socket = new WebSocket(wsUrl);
 
       this.socket.onopen = () => {
@@ -99,7 +104,10 @@ export class WebsocketService {
         
         if (this.reconnectAttempts < this.maxReconnectAttempts && this.authService.isLoggedIn()) {
           this.reconnectAttempts++;
-          setTimeout(() => this.connect(), this.reconnectInterval);
+          console.log(`WebSocket reconnecting... attempt ${this.reconnectAttempts}`);
+          setTimeout(() => this.connect(), this.reconnectInterval * this.reconnectAttempts);
+        } else if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+          console.warn('Maximum reconnection attempts reached');
         }
         
         if (!event.wasClean) {
@@ -132,6 +140,7 @@ export class WebsocketService {
     }, 10000); // Ping every 10 seconds
   }
   
+  // Stop ping-pong interval
   private stopPingPong(): void {
     if (this.pingInterval) {
       clearInterval(this.pingInterval);
@@ -139,23 +148,31 @@ export class WebsocketService {
     }
   }
 
+  // Disconnect from WebSocket server
   public disconnect(): void {
     this.stopPingPong();
     this.isConnected.next(false);
     
     if (this.socket) {
-      this.socket.close();
+      // Only close if it's open
+      if (this.socket.readyState === WebSocket.OPEN || 
+          this.socket.readyState === WebSocket.CONNECTING) {
+        this.socket.close();
+      }
       this.socket = null;
     }
   }
 
+  // Reconnect to WebSocket server
   private reconnect(): void {
     this.disconnect();
-    this.connect();
+    // Small delay before reconnecting
+    setTimeout(() => this.connect(), 500);
   }
 
+  // Send a message over WebSocket
   public send(type: string, payload: any): void {
-    // Special handling for message:send to prevent duplicate conversations
+    // Special handling for message:send to prevent duplicates
     if (type === 'message:send') {
       if (!payload || !payload.conversationId || !payload.message) {
         console.error('Invalid message payload:', payload);
@@ -170,6 +187,7 @@ export class WebsocketService {
       }
     }
 
+    // If not connected, queue the message and try to connect
     if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
       console.log('WebSocket not connected, queueing message:', type);
       this.messageQueue.push({ type, payload });
@@ -177,20 +195,26 @@ export class WebsocketService {
       return;
     }
 
+    // Create the message object
     const message = {
       type,
       payload,
       timestamp: Date.now()
     };
 
-    this.socket.send(JSON.stringify(message));
+    try {
+      // Send the message
+      this.socket.send(JSON.stringify(message));
+      console.log(`Sent WebSocket message: ${type}`);
+    } catch (error) {
+      console.error('Error sending WebSocket message:', error);
+      // Add to queue to retry later
+      this.messageQueue.push({ type, payload });
+    }
   }
   
   // Validate if we should send a message (debounce to prevent duplicates)
   private validateMessageSend(conversationId: string): boolean {
-    // This helps prevent duplicate conversation creation during message sending
-    // By checking if we just sent a message to this conversation
-    
     const now = Date.now();
     const lastSent = this.lastSentMessages[conversationId] || 0;
     
@@ -216,19 +240,22 @@ export class WebsocketService {
     return true;
   }
   
+  // Process queued messages
   private processQueue(): void {
     if (this.messageQueue.length === 0) return;
     
     console.log(`Processing ${this.messageQueue.length} queued WebSocket messages`);
     
-    while (this.messageQueue.length > 0) {
-      const message = this.messageQueue.shift();
-      if (message) {
-        this.send(message.type, message.payload);
-      }
-    }
+    const messages = [...this.messageQueue];
+    this.messageQueue = [];
+    
+    // Process each message
+    messages.forEach(message => {
+      this.send(message.type, message.payload);
+    });
   }
 
+  // Subscribe to specific message types
   public onMessage<T>(type?: string): Observable<T> {
     if (type) {
       return this.messageSubject.asObservable().pipe(
@@ -242,7 +269,13 @@ export class WebsocketService {
     );
   }
 
+  // Subscribe to all messages
   public onAnyMessage(): Observable<WebSocketMessage> {
     return this.messageSubject.asObservable();
+  }
+
+  // Check if WebSocket is connected
+  public isConnectedNow(): boolean {
+    return this.socket !== null && this.socket.readyState === WebSocket.OPEN;
   }
 }
