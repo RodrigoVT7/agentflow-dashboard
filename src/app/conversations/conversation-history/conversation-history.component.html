@@ -1,0 +1,77 @@
+<div class="container-fluid pt-3">
+  <h1 class="mb-4">Historial de Conversaciones</h1>
+  
+  <!-- Error alert -->
+  <div *ngIf="error" class="alert alert-danger" role="alert">
+    {{ error }}
+    <button class="btn btn-sm btn-outline-danger ms-2" (click)="loadCompletedConversations()">Reintentar</button>
+  </div>
+  
+  <!-- Loading state -->
+  <div *ngIf="loading" class="text-center my-5">
+    <div class="spinner-border text-primary" role="status">
+      <span class="visually-hidden">Loading...</span>
+    </div>
+    <p class="mt-2">Cargando historial...</p>
+  </div>
+  
+  <div *ngIf="!loading && !error" class="row">
+    <!-- Lista de conversaciones -->
+    <div class="col-md-4">
+      <div class="card">
+        <div class="card-header bg-light">
+          <h5 class="mb-0">Conversaciones Completadas</h5>
+        </div>
+        <div class="card-body p-0">
+          <div *ngIf="completedConversations.length === 0" class="p-4 text-center text-muted">
+            <i class="bi bi-inbox fs-1"></i>
+            <p class="mt-2">No hay conversaciones completadas</p>
+          </div>
+          
+          <div class="list-group list-group-flush" style="max-height: 70vh; overflow-y: auto;">
+            <a *ngFor="let item of completedConversations" 
+               href="javascript:void(0)" 
+               class="list-group-item list-group-item-action" 
+               [ngClass]="{'active': selectedConversation?.conversationId === item.conversationId}"
+               (click)="selectConversation(item)">
+              <div class="d-flex w-100 justify-content-between">
+                <h6 class="mb-1 text-truncate">{{ item.from }}</h6>
+                <small>{{ formatDate(item.startTime) }}</small>
+              </div>
+              <div class="d-flex justify-content-between align-items-center">
+                <small>{{ item.messages.length || 0 }} mensajes</small>
+                <small>Completada: {{ formatCompletedDate(item) }}</small>
+              </div>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Detalle de la conversación -->
+    <div class="col-md-8">
+      <div class="card" style="min-height: 70vh;">
+        <div class="card-header bg-light">
+          <h5 class="mb-0">
+            <span *ngIf="selectedConversation">
+              <i class="bi bi-chat-left-text me-2"></i>
+              Conversación con {{ selectedConversation.from }} (Completada)
+            </span>
+            <span *ngIf="!selectedConversation">
+              <i class="bi bi-chat me-2"></i>
+              Selecciona una conversación
+            </span>
+          </h5>
+        </div>
+        <div class="card-body">
+          <div *ngIf="!selectedConversation" class="text-center p-5">
+            <i class="bi bi-chat-square-text fs-1 text-muted"></i>
+            <p class="mt-3 text-muted">Selecciona una conversación del historial para ver los detalles</p>
+          </div>
+          
+          <app-chat *ngIf="selectedConversation" [conversation]="selectedConversation" [readOnly]="true"></app-chat>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

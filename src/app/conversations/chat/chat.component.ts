@@ -17,6 +17,7 @@ import { finalize } from 'rxjs/operators';
 })
 export class ChatComponent implements OnInit, OnChanges, AfterViewChecked {
   @Input() conversation!: QueueItem;
+  @Input() readOnly: boolean = false; // Nuevo: Para modo solo lectura
   @ViewChild('chatMessages') chatMessages!: ElementRef;
   
   messages: Message[] = [];
@@ -72,48 +73,62 @@ export class ChatComponent implements OnInit, OnChanges, AfterViewChecked {
     }
   }
 
-  private loadMessages(): void {
-    // First, set any messages we already have from the queue
-    if (this.conversation.messages) {
-      // Filter out invalid messages
-      this.messages = this.conversation.messages.filter(m => !!m && !!m.text && !!m.from);
-    }
+// En chat.component.ts
+private loadMessages(): void {
+  if (this.conversation) {
+    // Mostrar los mensajes que ya tenemos
+    this.messages = this.conversation.messages?.filter(m => !!m && !!m.text) || [];
     
-    // Then load any additional messages from the API
+    // Cargar todos los mensajes de la API (debería incluir el historial completo)
     this.conversationService.getMessages(this.conversation.conversationId)
       .subscribe({
-        next: messages => {
-          // Merge messages and remove duplicates by ID
-          const uniqueMessages = new Map<string, Message>();
+        next: (messages) => {
+          console.log(`Recibidos ${messages.length} mensajes para ${this.conversation.conversationId}`);
           
-          // Add existing messages
-          this.messages.forEach(msg => {
-            if (msg.id) {
-              uniqueMessages.set(msg.id, msg);
-            }
-          });
+          // Mostrar un mensaje de diagnóstico si parece que faltan mensajes
+          if (messages.length === 0 && this.messages.length === 0) {
+            console.warn(`⚠️ No se encontraron mensajes para la conversación ${this.conversation.conversationId}`);
+          }
           
-          // Add new messages, overwriting existing ones with the same ID
-          messages.filter(m => !!m && !!m.text && !!m.from).forEach(msg => {
-            if (msg.id) {
-              uniqueMessages.set(msg.id, msg);
-            }
-          });
-          
-          // Convert back to array and sort by timestamp
-          this.messages = Array.from(uniqueMessages.values())
-            .sort((a, b) => a.timestamp - b.timestamp);
-          
-          setTimeout(() => this.scrollToBottom(), 100);
+          if (messages.length > 0) {
+            // Combinar mensajes y eliminar duplicados
+            const uniqueMessages = new Map<string, Message>();
+            
+            // Añadir mensajes existentes
+            this.messages.forEach(msg => {
+              if (msg.id) {
+                uniqueMessages.set(msg.id, msg);
+              }
+            });
+            
+            // Añadir nuevos mensajes
+            messages.filter(m => !!m && !!m.text).forEach(msg => {
+              if (msg.id) {
+                uniqueMessages.set(msg.id, msg);
+              }
+            });
+            
+            // Convertir a array y ordenar por timestamp
+            this.messages = Array.from(uniqueMessages.values())
+              .sort((a, b) => a.timestamp - b.timestamp);
+            
+            setTimeout(() => this.scrollToBottom(), 100);
+          }
         },
-        error: error => {
-          console.error('Error loading messages:', error);
-          this.errorMessage = 'Failed to load messages. Please try again.';
+        error: (error) => {
+          console.error('Error cargando mensajes:', error);
+          this.errorMessage = 'No se pudieron cargar todos los mensajes.';
         }
       });
   }
+}
 
   sendMessage(): void {
+    // No enviar mensajes en modo solo lectura
+    if (this.readOnly) {
+      return;
+    }
+    
     if (this.messageForm.invalid || this.sending) {
       return;
     }
@@ -189,6 +204,11 @@ export class ChatComponent implements OnInit, OnChanges, AfterViewChecked {
   }
 
   completeConversation(): void {
+    // No completar conversaciones en modo solo lectura
+    if (this.readOnly) {
+      return;
+    }
+    
     if (confirm('Are you sure you want to complete this conversation?')) {
       this.conversationService.completeConversation(this.conversation.conversationId)
         .subscribe({
@@ -204,6 +224,11 @@ export class ChatComponent implements OnInit, OnChanges, AfterViewChecked {
   }
 
   updatePriority(priority: number): void {
+    // No actualizar prioridad en modo solo lectura
+    if (this.readOnly) {
+      return;
+    }
+    
     this.conversationService.updatePriority(this.conversation.conversationId, priority)
       .subscribe({
         next: () => {
@@ -250,6 +275,11 @@ export class ChatComponent implements OnInit, OnChanges, AfterViewChecked {
 
   // Retry sending a failed message
   retryMessage(message: Message): void {
+    // No reenviar mensajes en modo solo lectura
+    if (this.readOnly) {
+      return;
+    }
+    
     // Remove the failed message
     this.messages = this.messages.filter(m => m.id !== message.id);
     

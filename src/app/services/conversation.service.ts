@@ -468,4 +468,24 @@ export class ConversationService {
     // Request fresh data
     this.requestQueueUpdate();
   }
+
+  /**
+ * Obtener conversaciones completadas
+ */
+getCompletedConversations(): Observable<QueueItem[]> {
+  return this.http.get<QueueItem[]>(`${this.apiUrl}/completed`).pipe(
+    map(conversations => {
+      // Validar y normalizar los objetos QueueItem
+      return conversations.map(item => this.validateQueueItem(item));
+    }),
+    tap(conversations => {
+      console.log('Fetched completed conversations:', conversations.length);
+    }),
+    catchError(error => {
+      console.error('Error fetching completed conversations:', error);
+      return of([]); // Return empty array on error
+    })
+  );
+}
+
 }

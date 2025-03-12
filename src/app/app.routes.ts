@@ -6,6 +6,7 @@ import { LoginComponent } from './auth/login/login.component';
 import { RegisterComponent } from './auth/register/register.component';
 import { DashboardComponent } from './dashboard/dashboard.component';
 import { AgentListComponent } from './admin/agent-list/agent-list.component';
+import { ConversationHistoryComponent } from './conversations/conversation-history/conversation-history.component';
 
 // Guards
 import { AuthGuard } from './guards/auth.guard';
@@ -19,6 +20,11 @@ export const routes: Routes = [
   { 
     path: 'dashboard', 
     component: DashboardComponent, 
+    canActivate: [() => inject(AuthGuard).canActivate()]
+  },
+  { 
+    path: 'history', 
+    component: ConversationHistoryComponent, 
     canActivate: [() => inject(AuthGuard).canActivate()]
   },
   { 
