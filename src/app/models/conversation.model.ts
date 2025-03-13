@@ -1,12 +1,6 @@
-import { Message } from './message.model';
+import { Message } from "./message.model";
 
-export enum ConversationStatus {
-  BOT = 'bot',
-  WAITING = 'waiting',
-  ASSIGNED = 'assigned',
-  COMPLETED = 'completed',
-}
-
+// src/app/models/conversation.model.ts
 export interface QueueItem {
   // Campo para el ID en el formato del backend
   id?: string;
@@ -33,9 +27,17 @@ export interface QueueItem {
     previousInteractions?: number;
     customFields?: Record<string, any>;
     isNewConversation?: boolean;
+    isCompleted?: boolean;
+    completedAt?: number;
+    completedTimestamp?: number;
+    messageCount?: number;
+    // Añadir estas nuevas propiedades:
+    uniqueSessionId?: string;
+    sessionStartDate?: string;
   };
 }
 
+// Añadir esta interfaz al archivo src/app/models/conversation.model.ts
 export interface QueueSummary {
   id: string;
   waitTime: number;

@@ -35,7 +35,10 @@
                [ngClass]="{'active': selectedConversation?.conversationId === item.conversationId}"
                (click)="selectConversation(item)">
               <div class="d-flex w-100 justify-content-between">
-                <h6 class="mb-1 text-truncate">{{ item.from }}</h6>
+                <h6 class="mb-1 text-truncate">
+                  {{ item.from }}
+                  <small class="badge bg-secondary">{{ formatSessionDate(item) }}</small>
+                </h6>
                 <small>{{ formatDate(item.startTime) }}</small>
               </div>
               <div class="d-flex justify-content-between align-items-center">

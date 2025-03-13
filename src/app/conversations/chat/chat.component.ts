@@ -76,10 +76,23 @@ export class ChatComponent implements OnInit, OnChanges, AfterViewChecked {
 // En chat.component.ts
 private loadMessages(): void {
   if (this.conversation) {
-    // Mostrar los mensajes que ya tenemos
-    this.messages = this.conversation.messages?.filter(m => !!m && !!m.text) || [];
+    // Mostrar los mensajes que ya tenemos 
+    const existingMessages = this.conversation.messages?.filter(m => !!m && !!m.text) || [];
+    this.messages = existingMessages;
     
-    // Cargar todos los mensajes de la API (debería incluir el historial completo)
+    console.log(`Cargando mensajes para conversación ${this.conversation.conversationId}, tiene ${existingMessages.length} mensajes iniciales`);
+    
+    // En conversaciones completadas, a veces los mensajes ya vienen incluidos
+    // y no es necesario cargarlos nuevamente
+    const isCompletedConversation = this.conversation.metadata?.isCompleted;
+    
+    if (existingMessages.length > 0 && isCompletedConversation) {
+      console.log('Usando mensajes incluidos en la conversación completada');
+      setTimeout(() => this.scrollToBottom(), 100);
+      return; // Ya tenemos los mensajes, no necesitamos cargar más
+    }
+    
+    // Cargar todos los mensajes de la API
     this.conversationService.getMessages(this.conversation.conversationId)
       .subscribe({
         next: (messages) => {

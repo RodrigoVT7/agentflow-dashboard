@@ -472,20 +472,39 @@ export class ConversationService {
   /**
  * Obtener conversaciones completadas
  */
-getCompletedConversations(): Observable<QueueItem[]> {
-  return this.http.get<QueueItem[]>(`${this.apiUrl}/completed`).pipe(
-    map(conversations => {
-      // Validar y normalizar los objetos QueueItem
-      return conversations.map(item => this.validateQueueItem(item));
-    }),
-    tap(conversations => {
-      console.log('Fetched completed conversations:', conversations.length);
-    }),
-    catchError(error => {
-      console.error('Error fetching completed conversations:', error);
-      return of([]); // Return empty array on error
-    })
-  );
-}
+  getCompletedConversations(): Observable<QueueItem[]> {
+    return this.http.get<QueueItem[]>(`${this.apiUrl}/completed`).pipe(
+      map(conversations => {
+        // Validar y normalizar los objetos QueueItem
+        const validatedConversations = conversations.map(item => this.validateQueueItem(item));
+        
+        // Verificación adicional para asegurar que los mensajes tienen estructura correcta
+        validatedConversations.forEach(conv => {
+          if (conv.messages && Array.isArray(conv.messages)) {
+            // Asegurar que todos los mensajes tienen los campos necesarios
+            conv.messages = conv.messages.filter(msg => 
+              msg && msg.id && msg.from && msg.text && msg.timestamp
+            );
+          } else {
+            // Si no hay mensajes o no es un array, inicializar como array vacío
+            conv.messages = [];
+          }
+        });
+        
+        return validatedConversations;
+      }),
+      tap(conversations => {
+        console.log('Fetched completed conversations:', conversations.length);
+        // Log para verificar los mensajes en cada conversación
+        conversations.forEach(conv => {
+          console.log(`Conversación ${conv.conversationId}: ${conv.messages.length} mensajes`);
+        });
+      }),
+      catchError(error => {
+        console.error('Error fetching completed conversations:', error);
+        return of([]); // Return empty array on error
+      })
+    );
+  }
 
 }

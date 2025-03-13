@@ -61,4 +61,20 @@ export class ConversationHistoryComponent implements OnInit {
     // Si no hay fecha, usamos la fecha de inicio como fallback
     return new Date(item.startTime).toLocaleString();
   }
+
+  // Formatear la fecha de la sesión para mostrarla como distintivo
+  // src/app/conversations/conversation-history/conversation-history.component.ts
+
+// Formatear la fecha de la sesión para mostrarla como distintivo
+formatSessionDate(item: QueueItem): string {
+  if (item.metadata?.sessionStartDate) {
+    return item.metadata.sessionStartDate;
+  } else if (item.metadata?.completedTimestamp) {
+    // Usar la fecha completada si está disponible
+    return new Date(item.metadata.completedTimestamp).toISOString().split('T')[0];
+  }
+  
+  // Fallback a fecha estimada desde startTime
+  return new Date(item.startTime).toISOString().split('T')[0];
+}
 }
