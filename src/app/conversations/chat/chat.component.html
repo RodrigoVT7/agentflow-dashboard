@@ -78,6 +78,12 @@
   </div>
 </div>
 
+<!-- Add this alert when agent isn't assigned -->
+<div *ngIf="!readOnly && !isAgentAssigned()" class="alert alert-warning mb-3" role="alert">
+  <i class="bi bi-exclamation-triangle-fill me-2"></i>
+  Para enviar mensajes, primero debes asignarte a esta conversación
+</div>
+
 <!-- Message input form -->
 <form [formGroup]="messageForm" (ngSubmit)="sendMessage()">
   <div class="input-group mb-3">
@@ -87,17 +93,24 @@
       class="form-control" 
       formControlName="message" 
       placeholder="Type your message..." 
-      [disabled]="sending">
+      [disabled]="sending || !isAgentAssigned() || readOnly">
     <button 
       class="btn btn-primary" 
       type="submit" 
-      [disabled]="messageForm.invalid || sending">
+      [disabled]="messageForm.invalid || sending || !isAgentAssigned() || readOnly">
       <i *ngIf="sending" class="spinner-border spinner-border-sm me-1"></i>
       <i *ngIf="!sending" class="bi bi-send"></i>
       Send
     </button>
   </div>
 </form>
+
+<!-- Assign button when not assigned -->
+<div *ngIf="!readOnly && !isAgentAssigned()" class="text-center mt-3">
+  <button class="btn btn-outline-primary" (click)="assignToMe()">
+    <i class="bi bi-person-check me-1"></i> Assign to Me
+  </button>
+</div>
 
 <!-- Action buttons -->
 <div class="d-flex justify-content-between mt-3">

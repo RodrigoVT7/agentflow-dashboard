@@ -59,9 +59,15 @@ export class ChatComponent implements OnInit, OnChanges, AfterViewChecked {
   /**
    * Checks if an agent is assigned to the current conversation
    */
-  isAgentAssigned(): boolean {
-    return !!this.conversation?.assignedAgent;
-  }
+// Change the method from private to public
+public isAgentAssigned(): boolean {
+  const currentAgentId = this.authService.getCurrentAgent()?.id;
+  return (
+    !!currentAgentId && 
+    !!this.conversation && 
+    this.conversation.assignedAgent === currentAgentId
+  );
+}
 
   private scrollToBottom(): void {
     try {
@@ -136,85 +142,122 @@ private loadMessages(): void {
   }
 }
 
-  sendMessage(): void {
-    // No enviar mensajes en modo solo lectura
-    if (this.readOnly) {
-      return;
+sendMessage(): void {
+  // No enviar mensajes en modo solo lectura
+  if (this.readOnly) {
+    return;
+  }
+  
+  if (this.messageForm.invalid || this.sending) {
+    return;
+  }
+  
+  // Check if agent is assigned to this conversation
+  if (!this.isAgentAssigned()) {
+    this.errorMessage = 'No puedes enviar mensajes porque no estás asignado a esta conversación.';
+    return;
+  }
+  
+  const messageText = this.messageForm.value.message.trim();
+  if (!messageText) {
+    return;
+  }
+  
+  this.sending = true;
+  this.errorMessage = '';
+  
+  // Create an optimistic message to display immediately
+  const tempId = 'temp-' + Date.now();
+  const optimisticMessage: Message = {
+    id: tempId,
+    conversationId: this.conversation.conversationId,
+    from: MessageSender.AGENT,
+    text: messageText,
+    timestamp: Date.now(),
+    agentId: this.authService.getCurrentAgent()?.id
+  };
+  
+  // Add to local messages immediately (optimistic update)
+  this.messages = [...this.messages, optimisticMessage];
+  this.scrollToBottom();
+  
+  // Reset the form before sending to prevent duplicate messages
+  this.messageForm.reset();
+  
+  // Send the message via HTTP
+  this.conversationService.sendMessage(
+    this.conversation.conversationId, 
+    messageText
+  ).pipe(
+    finalize(() => {
+      this.sending = false;
+    })
+  ).subscribe({
+    next: (response) => {
+      console.log('Message sent successfully');
+      
+      // Update the optimistic message with the real message ID
+      const index = this.messages.findIndex(m => m.id === tempId);
+      if (index !== -1) {
+        const updatedMessages = [...this.messages];
+        updatedMessages[index] = {
+          ...updatedMessages[index],
+          id: response.messageId
+        };
+        this.messages = updatedMessages;
+      }
+      
+      // Refresh the conversation to get the latest state
+      this.conversationService.refreshConversation(this.conversation.conversationId);
+    },
+    error: (error) => {
+      console.error('Error sending message:', error);
+      this.errorMessage = 'Failed to send message. Please try again.';
+      
+      // Mark the optimistic message as failed
+      const index = this.messages.findIndex(m => m.id === tempId);
+      if (index !== -1) {
+        const updatedMessages = [...this.messages];
+        updatedMessages[index] = {
+          ...updatedMessages[index],
+          metadata: { error: 'Failed to send' }
+        };
+        this.messages = updatedMessages;
+      }
     }
-    
-    if (this.messageForm.invalid || this.sending) {
-      return;
-    }
-    
-    const messageText = this.messageForm.value.message.trim();
-    if (!messageText) {
-      return;
-    }
-    
-    this.sending = true;
-    this.errorMessage = '';
-    
-    // Create an optimistic message to display immediately
-    const tempId = 'temp-' + Date.now();
-    const optimisticMessage: Message = {
-      id: tempId,
-      conversationId: this.conversation.conversationId,
-      from: MessageSender.AGENT,
-      text: messageText,
-      timestamp: Date.now(),
-      agentId: this.authService.getCurrentAgent()?.id
-    };
-    
-    // Add to local messages immediately (optimistic update)
-    this.messages = [...this.messages, optimisticMessage];
-    this.scrollToBottom();
-    
-    // Reset the form before sending to prevent duplicate messages
-    this.messageForm.reset();
-    
-    // Send the message via HTTP
-    this.conversationService.sendMessage(
-      this.conversation.conversationId, 
-      messageText
-    ).pipe(
+  });
+}
+
+/**
+ * Assign the conversation to the current agent
+ */
+assignToMe(): void {
+  if (!this.conversation || this.readOnly) {
+    return;
+  }
+  
+  // Show loading
+  this.errorMessage = '';
+  this.sending = true;
+  
+  this.conversationService.assignAgent(this.conversation.conversationId)
+    .pipe(
       finalize(() => {
         this.sending = false;
       })
-    ).subscribe({
-      next: (response) => {
-        console.log('Message sent successfully');
-        
-        // Update the optimistic message with the real message ID
-        const index = this.messages.findIndex(m => m.id === tempId);
-        if (index !== -1) {
-          const updatedMessages = [...this.messages];
-          updatedMessages[index] = {
-            ...updatedMessages[index],
-            id: response.messageId
-          };
-          this.messages = updatedMessages;
-        }
-        
-        // Refresh the conversation to get the latest state
+    )
+    .subscribe({
+      next: () => {
+        console.log('Conversation assigned successfully');
+        // Refresh the conversation to get updated assignment
         this.conversationService.refreshConversation(this.conversation.conversationId);
       },
       error: (error) => {
-        console.error('Error sending message:', error);
-        this.errorMessage = 'Failed to send message. Please try again.';
-        
-        // Mark the optimistic message as failed
-        const index = this.messages.findIndex(m => m.id === tempId);
-        if (index !== -1) {
-          const updatedMessages = [...this.messages];
-          updatedMessages[index] = {
-            ...updatedMessages[index],
-            metadata: { error: 'Failed to send' }
-          };
-          this.messages = updatedMessages;
-        }
+        console.error('Error assigning conversation:', error);
+        this.errorMessage = 'Failed to assign conversation. Please try again.';
       }
     });
-  }
+}
 
   completeConversation(): void {
     // No completar conversaciones en modo solo lectura
