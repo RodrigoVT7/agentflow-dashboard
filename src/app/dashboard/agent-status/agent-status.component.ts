@@ -96,14 +96,14 @@ export class AgentStatusComponent implements OnInit, OnDestroy {
   getStatusName(status: AgentStatus): string {
     switch (status) {
       case AgentStatus.ONLINE:
-        return 'Online';
+        return 'En linea';
       case AgentStatus.BUSY:
-        return 'Busy';
+        return 'Ocupado';
       case AgentStatus.AWAY:
-        return 'Away';
+        return 'No disponible';
       case AgentStatus.OFFLINE:
       default:
-        return 'Offline';
+        return 'Desconectado';
     }
   }
   

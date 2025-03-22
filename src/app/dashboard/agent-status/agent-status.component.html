@@ -21,22 +21,22 @@
               'btn-secondary': currentAgent?.status === AgentStatus.AWAY
             }">
             <i class="bi bi-circle-fill me-1" style="font-size: 0.6rem;"></i>
-            {{ currentAgent?.status || 'Offline' }}
+            {{ currentAgent?.status || 'Desconectado' }}
             <span *ngIf="updating" class="spinner-border spinner-border-sm ms-2" role="status"></span>
           </button>
           <ul class="dropdown-menu" aria-labelledby="statusDropdown">
             <li><button class="dropdown-item" (click)="updateStatus(AgentStatus.ONLINE)">
-              <i class="bi bi-circle-fill text-success me-2" style="font-size: 0.6rem;"></i> Online
+              <i class="bi bi-circle-fill text-success me-2" style="font-size: 0.6rem;"></i> En linea
             </button></li>
             <li><button class="dropdown-item" (click)="updateStatus(AgentStatus.BUSY)">
-              <i class="bi bi-circle-fill text-warning me-2" style="font-size: 0.6rem;"></i> Busy
+              <i class="bi bi-circle-fill text-warning me-2" style="font-size: 0.6rem;"></i> Ocupado
             </button></li>
             <li><button class="dropdown-item" (click)="updateStatus(AgentStatus.AWAY)">
-              <i class="bi bi-circle-fill text-secondary me-2" style="font-size: 0.6rem;"></i> Away
+              <i class="bi bi-circle-fill text-secondary me-2" style="font-size: 0.6rem;"></i> No disponible
             </button></li>
             <li><hr class="dropdown-divider"></li>
             <li><button class="dropdown-item" (click)="updateStatus(AgentStatus.OFFLINE)">
-              <i class="bi bi-circle-fill text-danger me-2" style="font-size: 0.6rem;"></i> Offline
+              <i class="bi bi-circle-fill text-danger me-2" style="font-size: 0.6rem;"></i> Desconectado
             </button></li>
           </ul>
         </div>
@@ -48,7 +48,7 @@
     <div *ngIf="agents.length > 0">
       <h6 class="d-flex justify-content-between align-items-center">
         <span>Estado del equipo</span>
-        <small class="text-muted">{{ agents.length }} agents</small>
+        <small class="text-muted">{{ agents.length }} agentes</small>
       </h6>
       <ul class="list-group list-group-flush">
         <li *ngFor="let agent of agents" class="list-group-item d-flex justify-content-between align-items-center">
@@ -65,7 +65,7 @@
     
     <div *ngIf="agents.length === 0" class="text-center text-muted my-3">
       <i class="bi bi-people fs-2"></i>
-      <p class="mt-2">No other agents online</p>
+      <p class="mt-2">No hay agentes disponibles</p>
     </div>
   </div>
 </div>

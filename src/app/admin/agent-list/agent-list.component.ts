@@ -16,6 +16,8 @@ export class AgentListComponent implements OnInit {
   loading = true;
   error = '';
   showRegisterForm = false;
+  showEditForm = false;
+  selectedAgent: Agent | null = null;
   
   // For template access
   AgentStatus = AgentStatus;
@@ -36,7 +38,7 @@ export class AgentListComponent implements OnInit {
         this.loading = false;
       },
       error: (error) => {
-        this.error = 'Failed to load agents. Please try again.';
+        this.error = 'Fallo al cargar agentes, intenta de nuevo.';
         this.loading = false;
         console.error('Error loading agents:', error);
       }
@@ -45,6 +47,8 @@ export class AgentListComponent implements OnInit {
 
   toggleRegisterForm(): void {
     this.showRegisterForm = !this.showRegisterForm;
+    this.showEditForm = false; // Close edit form if open
+    this.selectedAgent = null; // Clear selected agent
   }
 
   onAgentCreated(agent: Agent): void {
@@ -52,15 +56,44 @@ export class AgentListComponent implements OnInit {
     this.showRegisterForm = false;
   }
 
+  editAgent(agent: Agent): void {
+    this.selectedAgent = { ...agent }; // Make a copy to avoid modifying the original directly
+    this.showEditForm = true;
+    this.showRegisterForm = false;
+  }
+
+  onAgentUpdated(updatedAgent: Agent): void {
+    // Update the agent in the list
+    this.agents = this.agents.map(agent => 
+      agent.id === updatedAgent.id ? updatedAgent : agent
+    );
+    this.showEditForm = false;
+    this.selectedAgent = null;
+  }
+
+  deleteAgent(agent: Agent): void {
+    if (confirm(`¿Esta seguro que desea eliminar al agente ${agent.name}?`)) {
+      this.agentService.deleteAgent(agent.id).subscribe({
+        next: () => {
+          this.agents = this.agents.filter(a => a.id !== agent.id);
+        },
+        error: (error) => {
+          this.error = 'Fallo al eliminara gente, intenta de nuevo.';
+          console.error('Error deleting agent:', error);
+        }
+      });
+    }
+  }
+
   formatLastActivity(timestamp: number): string {
     if (!timestamp) return 'Unknown';
     
     const seconds = Math.floor((Date.now() - timestamp) / 1000);
     
-    if (seconds < 60) return 'Just now';
-    if (seconds < 120) return '1 minute ago';
+    if (seconds < 60) return 'Justo ahora';
+    if (seconds < 120) return '1 minuto';
     if (seconds < 3600) return Math.floor(seconds / 60) + ' minutes ago';
-    if (seconds < 7200) return '1 hour ago';
+    if (seconds < 7200) return '1 hora';
     if (seconds < 86400) return Math.floor(seconds / 3600) + ' hours ago';
     
     return new Date(timestamp).toLocaleDateString();

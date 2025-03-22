@@ -62,15 +62,15 @@
           <!-- Assignment status -->
           <div *ngIf="!conversation.assignedAgent" class="mt-1">
             <button class="btn btn-sm btn-outline-primary" (click)="onAssignAgent(conversation.conversationId); $event.stopPropagation();">
-              <i class="bi bi-person-check"></i> Assign to me
+              <i class="bi bi-person-check"></i> Asignar a mi
             </button>
           </div>
           <div *ngIf="conversation.assignedAgent" class="mt-1">
             <small class="text-muted" *ngIf="!isConversationAssignedToMe(conversation)">
-              <i class="bi bi-person-check"></i> Assigned to agent
+              <i class="bi bi-person-check"></i> Asignado a otro agente
             </small>
             <small class="text-success" *ngIf="isConversationAssignedToMe(conversation)">
-              <i class="bi bi-person-check"></i> Assigned to you
+              <i class="bi bi-person-check"></i> Asignado a ti
             </small>
           </div>
         </a>

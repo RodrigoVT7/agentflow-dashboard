@@ -254,7 +254,7 @@ assignToMe(): void {
       },
       error: (error) => {
         console.error('Error assigning conversation:', error);
-        this.errorMessage = 'Failed to assign conversation. Please try again.';
+        this.errorMessage = 'Fallo al asignar la conversación, intenta de nuevo.';
       }
     });
 }
@@ -265,15 +265,15 @@ assignToMe(): void {
       return;
     }
     
-    if (confirm('Are you sure you want to complete this conversation?')) {
+    if (confirm('¿Estas seguro que quieres compeltar esta conversación?')) {
       this.conversationService.completeConversation(this.conversation.conversationId)
         .subscribe({
           next: () => {
             console.log('Conversation completed successfully');
           },
           error: (error) => {
-            console.error('Error completing conversation:', error);
-            this.errorMessage = 'Failed to complete conversation. Please try again.';
+            console.error('Error al cerrar la conversación:', error);
+            this.errorMessage = 'Fallo al completar la conversacion, intenta de nuevo.';
           }
         });
     }

@@ -107,6 +107,37 @@ export class AgentService {
     );
   }
 
+  // Update an existing agent
+  updateAgent(agentId: string, data: Partial<Agent>): Observable<Agent> {
+    return this.http.put<Agent>(`${this.apiUrl}/update/${agentId}`, data).pipe(
+      tap(updatedAgent => {
+        // Update in agents list
+        this.updateAgentInList(updatedAgent);
+      }),
+      catchError(error => {
+        console.error('Error updating agent:', error);
+        return throwError(() => error);
+      })
+    );
+  }
+
+  // Delete an agent
+  deleteAgent(agentId: string): Observable<{ success: boolean }> {
+    return this.http.delete<{ success: boolean }>(`${this.apiUrl}/delete/${agentId}`).pipe(
+      tap(response => {
+        // Remove from agents list if successful
+        if (response.success) {
+          const currentAgents = this.agentsSubject.value;
+          this.agentsSubject.next(currentAgents.filter(agent => agent.id !== agentId));
+        }
+      }),
+      catchError(error => {
+        console.error('Error deleting agent:', error);
+        return throwError(() => error);
+      })
+    );
+  }
+
   // Update agent status via HTTP
   updateAgentStatus(status: AgentStatus): Observable<{ success: boolean }> {
     // Get current agent

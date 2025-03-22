@@ -1,100 +1,115 @@
 <div class="container-fluid pt-3">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-      <h1>Agent Management</h1>
-      <button class="btn btn-primary" (click)="toggleRegisterForm()">
-        <i class="bi" [ngClass]="showRegisterForm ? 'bi-x-lg' : 'bi-plus-lg'"></i>
-        {{ showRegisterForm ? 'Cancel' : 'Add Agent' }}
-      </button>
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Administración de agentes</h1>
+    <button class="btn btn-primary" (click)="toggleRegisterForm()">
+      <i class="bi" [ngClass]="showRegisterForm ? 'bi-x-lg' : 'bi-plus-lg'"></i>
+      {{ showRegisterForm ? 'Cancelar' : 'Agregar Agente' }}
+    </button>
+  </div>
+
+  <!-- Register Form -->
+  <div *ngIf="showRegisterForm" class="card mb-4">
+    <div class="card-header bg-primary text-white">
+      <h5 class="mb-0">Registrar nuevo agente</h5>
     </div>
+    <div class="card-body">
+      <app-agent-form (agentCreated)="onAgentCreated($event)" (cancel)="toggleRegisterForm()"></app-agent-form>
+    </div>
+  </div>
   
-    <!-- Register Form -->
-    <div *ngIf="showRegisterForm" class="card mb-4">
-      <div class="card-header bg-primary text-white">
-        <h5 class="mb-0">Register New Agent</h5>
-      </div>
-      <div class="card-body">
-        <app-agent-form (agentCreated)="onAgentCreated($event)" (cancel)="toggleRegisterForm()"></app-agent-form>
+  <!-- Edit Form -->
+  <div *ngIf="showEditForm && selectedAgent" class="card mb-4">
+    <div class="card-header bg-secondary text-white">
+      <h5 class="mb-0">Editar agente: {{ selectedAgent.name }}</h5>
+    </div>
+    <div class="card-body">
+      <app-agent-form 
+        [agent]="selectedAgent" 
+        [isEditMode]="true" 
+        (agentUpdated)="onAgentUpdated($event)" 
+        (cancel)="showEditForm = false; selectedAgent = null">
+      </app-agent-form>
+    </div>
+  </div>
+
+  <!-- Error display -->
+  <div *ngIf="error" class="alert alert-danger" role="alert">
+    {{ error }}
+    <button class="btn btn-sm btn-outline-danger ms-2" (click)="loadAgents()">Reintentar</button>
+  </div>
+
+  <!-- Loading state -->
+  <div *ngIf="loading" class="text-center my-5">
+    <div class="spinner-border text-primary" role="status">
+      <span class="visually-hidden">Cargando...</span>
+    </div>
+    <p class="mt-2">Cargando agentes...</p>
+  </div>
+
+  <!-- Agent Table -->
+  <div *ngIf="!loading && !error" class="card">
+    <div class="card-header bg-light">
+      <div class="d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Agentes</h5>
+        <button class="btn btn-sm btn-outline-secondary" (click)="loadAgents()">
+          <i class="bi bi-arrow-clockwise"></i> Recargar
+        </button>
       </div>
     </div>
-  
-    <!-- Error display -->
-    <div *ngIf="error" class="alert alert-danger" role="alert">
-      {{ error }}
-      <button class="btn btn-sm btn-outline-danger ms-2" (click)="loadAgents()">Retry</button>
-    </div>
-  
-    <!-- Loading state -->
-    <div *ngIf="loading" class="text-center my-5">
-      <div class="spinner-border text-primary" role="status">
-        <span class="visually-hidden">Loading...</span>
+    <div class="card-body p-0">
+      <div *ngIf="agents.length === 0" class="p-4 text-center text-muted">
+        <i class="bi bi-people fs-1"></i>
+        <p class="mt-2">Ningun agente encontrado</p>
       </div>
-      <p class="mt-2">Cargando agentes...</p>
-    </div>
-  
-    <!-- Agent Table -->
-    <div *ngIf="!loading && !error" class="card">
-      <div class="card-header bg-light">
-        <div class="d-flex justify-content-between align-items-center">
-          <h5 class="mb-0">Agentes</h5>
-          <button class="btn btn-sm btn-outline-secondary" (click)="loadAgents()">
-            <i class="bi bi-arrow-clockwise"></i> Recargar
-          </button>
-        </div>
-      </div>
-      <div class="card-body p-0">
-        <div *ngIf="agents.length === 0" class="p-4 text-center text-muted">
-          <i class="bi bi-people fs-1"></i>
-          <p class="mt-2">Ningun agente encontrado</p>
-        </div>
-  
-        <div *ngIf="agents.length > 0" class="table-responsive">
-          <table class="table table-striped table-hover mb-0">
-            <thead>
-              <tr>
-                <th scope="col">Name</th>
-                <th scope="col">Email</th>
-                <th scope="col">Role</th>
-                <th scope="col">Status</th>
-                <th scope="col">Active Chats</th>
-                <th scope="col">Last Activity</th>
-                <th scope="col">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr *ngFor="let agent of agents">
-                <td>{{ agent.name }}</td>
-                <td>{{ agent.email }}</td>
-                <td>
-                  <span class="badge" 
-                    [ngClass]="{
-                      'bg-primary': agent.role === 'agent',
-                      'bg-info': agent.role === 'supervisor',
-                      'bg-dark': agent.role === 'admin'
-                    }">
-                    {{ agent.role }}
-                  </span>
-                </td>
-                <td>
-                  <span class="badge" [ngClass]="getStatusClass(agent.status)">
-                    {{ agent.status }}
-                  </span>
-                </td>
-                <td>{{ agent.activeConversations.length }} / {{ agent.maxConcurrentChats }}</td>
-                <td>{{ formatLastActivity(agent.lastActivity) }}</td>
-                <td>
-                  <div class="btn-group btn-group-sm">
-                    <button class="btn btn-outline-secondary">
-                      <i class="bi bi-pencil"></i>
-                    </button>
-                    <button class="btn btn-outline-danger">
-                      <i class="bi bi-trash"></i>
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+
+      <div *ngIf="agents.length > 0" class="table-responsive">
+        <table class="table table-striped table-hover mb-0">
+          <thead>
+            <tr>
+              <th scope="col">Nombre</th>
+              <th scope="col">Email</th>
+              <th scope="col">Rol</th>
+              <th scope="col">Estado</th>
+              <th scope="col">Chats activos</th>
+              <th scope="col">Ultima actividad</th>
+              <th scope="col">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let agent of agents">
+              <td>{{ agent.name }}</td>
+              <td>{{ agent.email }}</td>
+              <td>
+                <span class="badge" 
+                  [ngClass]="{
+                    'bg-primary': agent.role === 'agent',
+                    'bg-info': agent.role === 'supervisor',
+                    'bg-dark': agent.role === 'admin'
+                  }">
+                  {{ agent.role }}
+                </span>
+              </td>
+              <td>
+                <span class="badge" [ngClass]="getStatusClass(agent.status)">
+                  {{ agent.status }}
+                </span>
+              </td>
+              <td>{{ agent.activeConversations.length }} / {{ agent.maxConcurrentChats }}</td>
+              <td>{{ formatLastActivity(agent.lastActivity) }}</td>
+              <td>
+                <div class="btn-group btn-group-sm">
+                  <button class="btn btn-outline-secondary" (click)="editAgent(agent)">
+                    <i class="bi bi-pencil"></i>
+                  </button>
+                  <button class="btn btn-outline-danger" (click)="deleteAgent(agent)">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
   </div>
+</div>

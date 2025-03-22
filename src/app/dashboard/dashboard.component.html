@@ -3,10 +3,10 @@
   <div *ngIf="!isConnected" class="alert alert-warning d-flex justify-content-between align-items-center" role="alert">
     <div>
       <i class="bi bi-wifi-off me-2"></i>
-      Connection to server is down. Some features may not work properly.
+      Sin conexion, el sistema no funcionará correctamente.
     </div>
     <button class="btn btn-sm btn-warning" (click)="reconnectWebSocket()">
-      <i class="bi bi-arrow-clockwise me-1"></i> Reconnect
+      <i class="bi bi-arrow-clockwise me-1"></i> Intentar reconectar
     </button>
   </div>
 
@@ -17,7 +17,7 @@
       {{ error }}
     </div>
     <button class="btn btn-sm btn-outline-danger" (click)="clearConversationsCache()">
-      <i class="bi bi-arrow-clockwise me-1"></i> Refresh
+      <i class="bi bi-arrow-clockwise me-1"></i> Recargar
     </button>
   </div>
 
@@ -82,7 +82,7 @@
         <div class="card-header bg-light d-flex justify-content-between align-items-center">
           <h5 class="mb-0">Cola de conversaciones</h5>
           <button class="btn btn-sm btn-outline-secondary" (click)="clearConversationsCache()">
-            <i class="bi bi-arrow-clockwise"></i> Refresh
+            <i class="bi bi-arrow-clockwise"></i> Recargar
           </button>
         </div>
         <div class="card-body p-0">
@@ -122,21 +122,21 @@
               <!-- Message count and time -->
               <div class="d-flex justify-content-between align-items-center">
                 <small>{{ formatTimestamp(item.startTime) }}</small>
-                <small>{{ item.messages.length }} msgs</small>
+                <small>{{ item.messages.length }} msjs</small>
               </div>
               
               <!-- Assignment status -->
               <div *ngIf="!item.assignedAgent" class="mt-1">
                 <button class="btn btn-sm btn-outline-primary" (click)="assignToMe(item.conversationId); $event.stopPropagation();">
-                  <i class="bi bi-person-check"></i> Assign to me
+                  <i class="bi bi-person-check"></i> Asignar a mi
                 </button>
               </div>
               <div *ngIf="item.assignedAgent" class="mt-1">
                 <small class="text-muted" *ngIf="item.assignedAgent !== authService.getCurrentAgent()?.id">
-                  <i class="bi bi-person-check"></i> Assigned to another agent
+                  <i class="bi bi-person-check"></i> Asignado a otro agente
                 </small>
                 <small class="text-success" *ngIf="item.assignedAgent === authService.getCurrentAgent()?.id">
-                  <i class="bi bi-person-check"></i> Assigned to you
+                  <i class="bi bi-person-check"></i> Asignado a ti
                 </small>
               </div>
             </a>
@@ -152,7 +152,7 @@
           <h5 class="mb-0">
             <span *ngIf="activeConversation">
               <i class="bi bi-chat-left-text me-2"></i>
-              Conversation with {{ activeConversation.from }}
+              Conversación con {{ activeConversation.from }}
             </span>
             <span *ngIf="!activeConversation">
               <i class="bi bi-chat me-2"></i>

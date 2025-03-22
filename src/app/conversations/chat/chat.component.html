@@ -2,8 +2,8 @@
 <div class="chat-info mb-3">
   <div class="d-flex justify-content-between align-items-center">
     <div>
-      <h6 class="m-0">Customer: {{ conversation.from }}</h6>
-      <small class="text-muted">{{ messages.length }} messages</small>
+      <h6 class="m-0">Cliente: {{ conversation.from }}</h6>
+      <small class="text-muted">{{ messages.length }} Mensajes</small>
     </div>
     <div class="btn-group">
       <button 
@@ -17,14 +17,14 @@
         data-bs-toggle="dropdown"
         aria-expanded="false">
         <i class="bi bi-flag-fill me-1"></i>
-        Priority: {{ conversation.priority }}
+        Prioridad: {{ conversation.priority }}
       </button>
       <ul class="dropdown-menu dropdown-menu-end">
-        <li><button class="dropdown-item" (click)="updatePriority(1)"><i class="bi bi-flag me-2"></i> Low (1)</button></li>
+        <li><button class="dropdown-item" (click)="updatePriority(1)"><i class="bi bi-flag me-2"></i> Baja (1)</button></li>
         <li><button class="dropdown-item" (click)="updatePriority(2)"><i class="bi bi-flag-fill me-2"></i> Normal (2)</button></li>
-        <li><button class="dropdown-item" (click)="updatePriority(3)"><i class="bi bi-flag-fill me-2 text-warning"></i> High (3)</button></li>
-        <li><button class="dropdown-item" (click)="updatePriority(4)"><i class="bi bi-flag-fill me-2 text-danger"></i> Urgent (4)</button></li>
-        <li><button class="dropdown-item" (click)="updatePriority(5)"><i class="bi bi-flag-fill me-2 text-danger"></i> Critical (5)</button></li>
+        <li><button class="dropdown-item" (click)="updatePriority(3)"><i class="bi bi-flag-fill me-2 text-warning"></i> Alta (3)</button></li>
+        <li><button class="dropdown-item" (click)="updatePriority(4)"><i class="bi bi-flag-fill me-2 text-danger"></i> Urgente (4)</button></li>
+        <li><button class="dropdown-item" (click)="updatePriority(5)"><i class="bi bi-flag-fill me-2 text-danger"></i> Critica (5)</button></li>
       </ul>
     </div>
   </div>
@@ -50,10 +50,10 @@
       <div *ngIf="message.from !== MessageSender.SYSTEM">
         <div class="message-header">
           <span class="message-sender">
-            <span *ngIf="message.from === MessageSender.USER">Customer</span>
+            <span *ngIf="message.from === MessageSender.USER">Cliente</span>
             <span *ngIf="message.from === MessageSender.BOT">Bot</span>
             <span *ngIf="message.from === MessageSender.AGENT">
-              Agent {{ isCurrentAgent(message) ? '(You)' : '' }}
+              Agent {{ isCurrentAgent(message) ? '(Tu)' : '' }}
             </span>
           </span>
         </div>
@@ -65,7 +65,7 @@
           <small>
             <i class="bi bi-exclamation-triangle-fill me-1"></i>
             {{ getErrorMessage(message) }}
-            <button class="btn btn-sm btn-link text-danger p-0 ms-2" (click)="retryMessage(message)">Retry</button>
+            <button class="btn btn-sm btn-link text-danger p-0 ms-2" (click)="retryMessage(message)">Reintentar</button>
           </small>
         </div>
       </div>
@@ -74,7 +74,7 @@
   
   <div *ngIf="messages.length === 0" class="text-center text-muted my-5">
     <i class="bi bi-chat fs-1"></i>
-    <p class="mt-2">No messages yet</p>
+    <p class="mt-2">Sin mensajes todavia</p>
   </div>
 </div>
 
@@ -92,7 +92,7 @@
       id="messageInput"
       class="form-control" 
       formControlName="message" 
-      placeholder="Type your message..." 
+      placeholder="Escribe tu mensaje..." 
       [disabled]="sending || !isAgentAssigned() || readOnly">
     <button 
       class="btn btn-primary" 
@@ -100,21 +100,17 @@
       [disabled]="messageForm.invalid || sending || !isAgentAssigned() || readOnly">
       <i *ngIf="sending" class="spinner-border spinner-border-sm me-1"></i>
       <i *ngIf="!sending" class="bi bi-send"></i>
-      Send
+      Enviar
     </button>
   </div>
 </form>
 
 <!-- Assign button when not assigned -->
-<div *ngIf="!readOnly && !isAgentAssigned()" class="text-center mt-3">
-  <button class="btn btn-outline-primary" (click)="assignToMe()">
-    <i class="bi bi-person-check me-1"></i> Assign to Me
+<div  class="d-flex justify-content-between mt-3">
+  <button *ngIf="!readOnly && !isAgentAssigned()" class="btn btn-outline-primary" (click)="assignToMe()">
+    <i class="bi bi-person-check me-1"></i> Asignar a mi
   </button>
-</div>
-
-<!-- Action buttons -->
-<div class="d-flex justify-content-between mt-3">
-  <button class="btn btn-outline-secondary" (click)="completeConversation()">
-    <i class="bi bi-check-circle me-1"></i> Complete Conversation
+  <button *ngIf="!readOnly && isAgentAssigned()" class="btn btn-outline-secondary" (click)="completeConversation()">
+    <i class="bi bi-check-circle me-1"></i> Completar conversacion
   </button>
 </div>
